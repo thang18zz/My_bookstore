@@ -1,0 +1,35 @@
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# Editor / IDE Files
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.classpath
+.project
+.settings/
+
+# Backend (Java / Maven / Spring Boot)
+**/target/
+**/*.mv.db
+**/*.trace.db
+*.jar
+*.war
+*.class
+
+# Frontend (Node / Vue / Vite)
+**/node_modules/
+**/dist/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment files
+.env
+.env.local
+.env.*.local
