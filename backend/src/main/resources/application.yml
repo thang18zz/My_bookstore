@@ -2,10 +2,12 @@ server:
   port: 8080
 
 spring:
+  config:
+    import: "optional:classpath:application-local.yml"
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3307/bookstore?useSSL=false&serverTimezone=UTC&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/bookstore?useSSL=false&serverTimezone=UTC&createDatabaseIfNotExist=true&allowPublicKeyRetrieval=true}
     username: ${SPRING_DATASOURCE_USERNAME:root}
-    password: ${SPRING_DATASOURCE_PASSWORD:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
   jpa:
     hibernate:
       ddl-auto: update
@@ -20,8 +22,9 @@ app:
     expiration-ms: 86400000 # 24h
 
 groq:
-  api-key: ${GROQ_API_KEY:your_groq_api_key_here}
+  api-key: ${GROQ_API_KEY:}
   base-url: https://api.groq.com/openai/v1/chat/completions
   model: qwen/qwen3.8-27b
-  max-tokens: 400
+  max-tokens: 300
   temperature: 0.4
+

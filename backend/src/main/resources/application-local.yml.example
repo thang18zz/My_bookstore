@@ -1,0 +1,11 @@
+# HƯỚNG DẪN CẤU HÌNH LOCAL:
+# Sao chép (copy) file này thành 'application-local.yml' trong cùng thư mục
+# Điền thông tin mật khẩu MySQL và API Key của bạn vào bên dưới.
+# File 'application-local.yml' đã được chặn trong .gitignore nên không sợ bị lộ lên GitHub.
+
+spring:
+  datasource:
+    password: "YOUR_MYSQL_PASSWORD_HERE"
+
+groq:
+  api-key: "YOUR_GROQ_API_KEY_HERE"

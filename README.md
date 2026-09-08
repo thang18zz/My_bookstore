@@ -24,33 +24,98 @@ Nothing is duplicated: e.g. `AdminProductController` calls the *same* `ProductSe
 customers use; `StatsService` reads `OrderRepository`/`ProductRepository` directly instead of a
 separate reporting table, so admin dashboards can never drift from the live data.
 
-## Backend (`backend/`)
+## 🚀 Hướng Dẫn Chạy Thủ Công Website (Từ A Đến Z)
 
-Maven/Spring Boot project, one package per module under `com.bookstore`:
+### 1. Yêu cầu môi trường (Prerequisites)
+- **Java**: JDK 17 trở lên (`java -version`)
+- **Maven**: 3.8 trở lên (`mvn -version` hoặc dùng script `mvnw.cmd` có sẵn)
+- **Node.js**: Phiên bản 18+ hoặc mới nhất (`node -v` và `npm -v`)
+- **MySQL Server**: Phiên bản 8.0 (`mysql --version`)
 
-| Package | Theme(s) | Use cases |
-|---|---|---|
-| `common` | — | JWT auth, ApiResponse envelope, global exception handling |
-| `auth` | 1 | UC1.1.1-3, UC1.2.1-2 |
-| `product` | 2, 8, 9 | UC2.1.x, UC2.2.x, UC8.1.x, UC9.1.x |
-| `wishlist` | 2.3 | UC2.3.1-3 |
-| `cart` | 3 | UC3.1.x, UC3.2.x |
-| `order` | 4, 5 | UC4.1.x, UC4.2.x, UC5.1.x, UC5.2.x |
-| `address` | 6 | UC6.1.1-5 |
-| `review` | 7 | UC7.1.x, UC7.2.x |
-| `customer` | 10 | UC10.1.1-6 |
-| `inventory` | 11 | UC11.1.1-5 |
-| `stats` | 12 | UC12.1.x, UC12.2.x |
-| `contact` | 13 | UC13.1.1-4 |
-| `chatbot` | 14 | UC14.1.1-6, UC14.2.1-5 |
+---
 
-Run it:
-```bash
+### 2. Bước 1: Khởi động MySQL Server
+Đảm bảo dịch vụ MySQL đang chạy trên máy của bạn (mặc định cổng `3306`):
+- **Trên Windows (PowerShell quyền Administrator)**:
+  ```powershell
+  Start-Service MySQL80
+  ```
+  *(Hoặc mở Services (`services.msc`) -> tìm `MySQL80` -> click Start).*
+
+---
+
+### 3. Bước 2: Cấu hình mật khẩu & API Key cục bộ (Local)
+Dự án sử dụng cơ chế bảo mật tách biệt, thông tin nhạy cảm được đặt trong file `application-local.yml` và được chặn bởi `.gitignore` (không sợ lộ khi đẩy lên GitHub).
+
+1. Vào thư mục `backend/src/main/resources/`
+2. Tạo file `application-local.yml` (hoặc sao chép từ file mẫu `application-local.yml.example`):
+   ```yaml
+   spring:
+     datasource:
+       password: "MatKhauMySQLCuaBan"   # Ví dụ: Example123.
+
+   groq:
+     api-key: "gsk_your_groq_api_key"     # API key từ console.groq.com
+   ```
+
+---
+
+### 4. Bước 3: Khởi chạy Backend (Spring Boot)
+Mở một cửa sổ Terminal tại thư mục gốc dự án:
+```powershell
+# Di chuyển vào thư mục backend
 cd backend
-export GROQ_API_KEY=gsk_your_real_key      # never commit this
+
+# Chạy ứng dụng bằng Maven
 mvn spring-boot:run
 ```
-Create the `bookstore` MySQL schema first (or point `application.yml` at H2 for a quick local run).
+*(Nếu máy chưa cài sẵn biến môi trường Maven, bạn có thể chạy `.\mvnw.cmd spring-boot:run`)*.
+
+- Khi chạy thành công, Backend sẽ lắng nghe tại: **`http://localhost:8080`**.
+- **Cơ chế tự động tạo DB:** Spring Boot sẽ tự động tạo cơ sở dữ liệu `bookstore` và toàn bộ 15 bảng JPA tương ứng mà bạn không cần phải tạo thủ công.
+
+---
+
+### 5. Bước 4 (Tùy chọn): Nạp dữ liệu sản phẩm & danh mục mẫu
+Nếu database của bạn đang trống và muốn nạp sẵn danh mục sách cùng các sản phẩm mẫu:
+
+> [!WARNING]
+> **Không dùng PowerShell pipe (`|`) để import file SQL có tiếng Việt.** PowerShell không truyền UTF-8 đúng cách sang tiến trình ngoài, khiến toàn bộ ký tự tiếng Việt bị lưu thành dấu hỏi `???` trong database.
+
+```powershell
+cmd /c "chcp 65001 >nul & `"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe`" --default-character-set=utf8mb4 -u root -p bookstore < backend\src\main\resources\seed.sql"
+```
+
+*(Thay `MATKHAU_CUA_BAN` bằng mật khẩu MySQL thực tế của bạn, ví dụ: `Example123.`).*
+
+Sau khi import, kiểm tra lại bằng lệnh:
+```powershell
+& "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -u root -pMATKHAU_CUA_BAN -e "SELECT name FROM bookstore.products LIMIT 3;"
+```
+Kết quả đúng phải hiển thị tên tiếng Việt rõ ràng, không có ký tự `?`.
+
+---
+
+### 6. Bước 5: Khởi chạy Frontend (Vue 3 + Vite)
+Mở một cửa sổ Terminal thứ hai tại thư mục gốc dự án:
+```powershell
+# Di chuyển vào thư mục frontend
+cd frontend
+
+# Cài đặt thư viện dependencies (chỉ cần chạy lần đầu)
+npm install
+
+# Khởi chạy server phát triển
+npm run dev
+```
+
+- Mở trình duyệt và truy cập: **`http://localhost:5173`**.
+- Mọi yêu cầu `/api` từ giao diện sẽ được Vite tự động chuyển tiếp (proxy) sang Backend tại `http://localhost:8080`.
+
+---
+
+## Backend Architecture (`backend/`)
+
 
 ### The chatbot pipeline (Epic 14.1/14.2), the part explicitly requested
 
