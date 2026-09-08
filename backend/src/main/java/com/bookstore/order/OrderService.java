@@ -38,7 +38,8 @@ public class OrderService {
         CartDto cart = cartService.view(userId);
         if (cart.getItems().isEmpty()) throw new BadRequestException("Cart is empty");
         Address address = addressService.requireOwned(userId, addressId); // UC4.1.2
-        String summary = address.getRecipientName() + " - " + address.getPhone() + " - " + address.getLine1();
+        String summary = address.getRecipientName() + " - " + address.getPhone() + " - " + address.getLine1()
+                + ", " + address.getDistrict() + ", " + address.getCity();
         return new OrderPreviewDto(cart, addressId, summary);
     }
 
@@ -118,7 +119,8 @@ public class OrderService {
                 .map(i -> new OrderItemDto(i.getProduct().getId(), i.getProduct().getName(),
                         i.getQuantity(), i.getPriceAtPurchase()))
                 .toList();
-        String addr = o.getShippingAddress().getRecipientName() + " - " + o.getShippingAddress().getLine1();
+        String addr = o.getShippingAddress().getRecipientName() + " - " + o.getShippingAddress().getLine1()
+                + ", " + o.getShippingAddress().getDistrict() + ", " + o.getShippingAddress().getCity();
         return new OrderDto(o.getId(), o.getStatus().name(), o.getTotalAmount(), o.getCreatedAt(),
                 o.getShippingAddress().getRecipientName(), addr, items);
     }

@@ -9,8 +9,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/** Epic 14.1 - Chatbot hỗ trợ khách hàng. Left public (see SecurityConfig) so guests can chat too;
- *  CurrentUser.id() is simply null for anonymous callers and ChatbotService handles that case. */
+/** Epic 14.1 - Chatbot hỗ trợ khách hàng. Requires a logged-in customer (the spec's user stories are
+ *  all "Là Khách hàng..."), so this is intentionally NOT public - see SecurityConfig. */
 @RestController
 @RequestMapping("/api/chatbot")
 @RequiredArgsConstructor
@@ -19,8 +19,8 @@ public class ChatbotController {
     private final ChatbotService chatbotService;
 
     @PostMapping("/sessions") // UC14.1.1
-    public ApiResponse<Long> start() {
-        return ApiResponse.ok("Session started", chatbotService.startSession(CurrentUser.id()));
+    public ApiResponse<StartSessionResponse> start() {
+        return ApiResponse.ok("Session started", new StartSessionResponse(chatbotService.startSession(CurrentUser.id())));
     }
 
     @PostMapping("/sessions/{sessionId}/messages") // UC14.1.2 / UC14.1.3 / UC14.1.4

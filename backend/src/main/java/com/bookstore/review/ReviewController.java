@@ -2,6 +2,7 @@ package com.bookstore.review;
 
 import com.bookstore.common.ApiResponse;
 import com.bookstore.common.CurrentUser;
+import com.bookstore.review.dto.ReviewDto;
 import com.bookstore.review.dto.ReviewRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,19 +18,19 @@ public class ReviewController {
     private final ReviewService reviewService;
 
     @GetMapping("/product/{productId}") // UC7.1.1
-    public ApiResponse<Page<Review>> forProduct(@PathVariable Long productId,
+    public ApiResponse<Page<ReviewDto>> forProduct(@PathVariable Long productId,
                                                  @RequestParam(defaultValue = "0") int page,
                                                  @RequestParam(defaultValue = "10") int size) {
         return ApiResponse.ok(reviewService.listForProduct(productId, PageRequest.of(page, size)));
     }
 
     @PostMapping // UC7.1.2
-    public ApiResponse<Review> add(@Valid @RequestBody ReviewRequest req) {
+    public ApiResponse<ReviewDto> add(@Valid @RequestBody ReviewRequest req) {
         return ApiResponse.ok("Review submitted", reviewService.add(CurrentUser.id(), req));
     }
 
     @PutMapping("/{id}") // UC7.1.3
-    public ApiResponse<Review> edit(@PathVariable Long id, @Valid @RequestBody ReviewRequest req) {
+    public ApiResponse<ReviewDto> edit(@PathVariable Long id, @Valid @RequestBody ReviewRequest req) {
         return ApiResponse.ok("Review updated", reviewService.edit(CurrentUser.id(), id, req));
     }
 

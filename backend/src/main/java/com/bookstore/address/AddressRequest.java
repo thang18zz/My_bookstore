@@ -9,6 +9,7 @@ public class AddressRequest {
     @NotBlank private String recipientName;
     @NotBlank private String phone;
     @NotBlank private String line1;
+    @NotBlank private String district;
     private String city;
     private boolean isDefault;
 }

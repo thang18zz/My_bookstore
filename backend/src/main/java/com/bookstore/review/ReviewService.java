@@ -6,6 +6,7 @@ import com.bookstore.common.BadRequestException;
 import com.bookstore.common.ResourceNotFoundException;
 import com.bookstore.product.Product;
 import com.bookstore.product.ProductRepository;
+import com.bookstore.review.dto.ReviewDto;
 import com.bookstore.review.dto.ReviewRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -23,12 +24,12 @@ public class ReviewService {
     private final UserRepository userRepository;
 
     // UC7.1.1 - Xem đánh giá sản phẩm
-    public Page<Review> listForProduct(Long productId, Pageable pageable) {
-        return reviewRepository.findByProductIdAndStatus(productId, ReviewStatus.VISIBLE, pageable);
+    public Page<ReviewDto> listForProduct(Long productId, Pageable pageable) {
+        return reviewRepository.findByProductIdAndStatus(productId, ReviewStatus.VISIBLE, pageable).map(this::toDto);
     }
 
     // UC7.1.2 - Đánh giá sản phẩm
-    public Review add(Long userId, ReviewRequest req) {
+    public ReviewDto add(Long userId, ReviewRequest req) {
         User user = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User not found"));
         Product product = productRepository.findById(req.getProductId())
                 .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
@@ -37,15 +38,23 @@ public class ReviewService {
         r.setProduct(product);
         r.setRating(req.getRating());
         r.setComment(req.getComment());
-        return reviewRepository.save(r);
+        return toDto(reviewRepository.save(r));
     }
 
     // UC7.1.3 - Chỉnh sửa đánh giá
-    public Review edit(Long userId, Long reviewId, ReviewRequest req) {
+    public ReviewDto edit(Long userId, Long reviewId, ReviewRequest req) {
         Review r = requireOwned(userId, reviewId);
         r.setRating(req.getRating());
         r.setComment(req.getComment());
-        return reviewRepository.save(r);
+        return toDto(reviewRepository.save(r));
+    }
+
+    // Flattens the entity so Jackson never touches the lazy User/Product proxies directly
+    // (that was the cause of the 500 "ByteBuddyInterceptor" serialization error).
+    public ReviewDto toDto(Review r) {
+        return new ReviewDto(r.getId(), r.getProduct().getId(), r.getProduct().getName(),
+                r.getUser().getId(), r.getUser().getFullName(), r.getRating(), r.getComment(),
+                r.getStatus().name(), r.getCreatedAt());
     }
 
     // UC7.1.4 - Xóa đánh giá của mình

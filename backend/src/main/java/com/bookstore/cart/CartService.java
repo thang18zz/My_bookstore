@@ -83,7 +83,7 @@ public class CartService {
     }
 
     // UC3.2.1 / UC3.2.2 - Kiểm tra tồn kho / số lượng có thể mua (reused by checkout too, see OrderService)
-    public void checkStock(Product product, int requestedQty) {
+    void checkStock(Product product, int requestedQty) {
         if (product.getStockQuantity() <= 0) {
             throw new BadRequestException(product.getName() + " is out of stock");
         }

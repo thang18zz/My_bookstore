@@ -1,6 +1,7 @@
 package com.bookstore.auth;
 
 import com.bookstore.common.BaseEntity;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -15,8 +16,11 @@ public class User extends BaseEntity {
     @Column(nullable = false, unique = true)
     private String email;
 
+    // BCrypt hash - the comment said "never returned in any DTO", but AdminCustomerController
+    // (Epic 13.1) returns this entity directly, so @JsonIgnore enforces that at the source too.
     @Column(nullable = false)
-    private String password; // BCrypt hash - never returned in any DTO
+    @JsonIgnore
+    private String password;
 
     @Column(nullable = false)
     private String fullName;
