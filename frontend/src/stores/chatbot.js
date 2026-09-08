@@ -9,7 +9,7 @@ export const useChatbotStore = defineStore('chatbot', {
     async ensureSession() { // UC14.1.1
       if (!this.sessionId) {
         const res = await chatbotApi.start()
-        this.sessionId = res.data
+        this.sessionId = res.data.sessionId
       }
     },
     async send(content) { // UC14.1.2 / UC14.1.3 / UC14.1.4

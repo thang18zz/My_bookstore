@@ -7,5 +7,6 @@ export default {
   create: (payload) => http.post('/admin/products', payload),
   update: (id, payload) => http.put(`/admin/products/${id}`, payload),
   updatePrice: (id, price) => http.patch(`/admin/products/${id}/price`, null, { params: { price } }),
-  remove: (id) => http.delete(`/admin/products/${id}`),
+  remove: (id, hard = false) => http.delete(`/admin/products/${id}`, { params: { hard } }),
+  restore: (id) => http.patch(`/admin/products/${id}/restore`),
 }

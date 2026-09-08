@@ -62,7 +62,7 @@ public class ProductService {
     ProductDto toDto(Product p) {
         return new ProductDto(p.getId(), p.getName(), p.getDescription(), p.getPrice(), p.getStockQuantity(),
                 p.getImageUrl(), p.getCategory() != null ? p.getCategory().getId() : null,
-                p.getCategory() != null ? p.getCategory().getName() : null, p.getStockQuantity() > 0);
+                p.getCategory() != null ? p.getCategory().getName() : null, p.getStockQuantity() > 0, p.isActive());
     }
 
     Product requireEntity(Long id) {

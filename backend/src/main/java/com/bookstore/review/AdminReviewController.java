@@ -2,6 +2,7 @@ package com.bookstore.review;
 
 import com.bookstore.common.ApiResponse;
 import com.bookstore.common.ResourceNotFoundException;
+import com.bookstore.review.dto.ReviewDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -14,17 +15,18 @@ import org.springframework.web.bind.annotation.*;
 public class AdminReviewController {
 
     private final ReviewRepository reviewRepository;
+    private final ReviewService reviewService;
 
     @GetMapping // UC7.2.1
-    public ApiResponse<Page<Review>> list(@RequestParam(defaultValue = "0") int page,
+    public ApiResponse<Page<ReviewDto>> list(@RequestParam(defaultValue = "0") int page,
                                            @RequestParam(defaultValue = "20") int size) {
-        return ApiResponse.ok(reviewRepository.findAll(PageRequest.of(page, size)));
+        return ApiResponse.ok(reviewRepository.findAll(PageRequest.of(page, size)).map(reviewService::toDto));
     }
 
     @GetMapping("/{id}") // UC7.2.2
-    public ApiResponse<Review> detail(@PathVariable Long id) {
-        return ApiResponse.ok(reviewRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Review not found")));
+    public ApiResponse<ReviewDto> detail(@PathVariable Long id) {
+        return ApiResponse.ok(reviewService.toDto(reviewRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Review not found"))));
     }
 
     @DeleteMapping("/{id}") // UC7.2.3
@@ -34,9 +36,9 @@ public class AdminReviewController {
     }
 
     @PatchMapping("/{id}/hide") // UC7.2.4 - Quản lý đánh giá vi phạm
-    public ApiResponse<Review> hide(@PathVariable Long id) {
+    public ApiResponse<ReviewDto> hide(@PathVariable Long id) {
         Review r = reviewRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Review not found"));
         r.setStatus(ReviewStatus.HIDDEN);
-        return ApiResponse.ok("Review hidden", reviewRepository.save(r));
+        return ApiResponse.ok("Review hidden", reviewService.toDto(reviewRepository.save(r)));
     }
 }

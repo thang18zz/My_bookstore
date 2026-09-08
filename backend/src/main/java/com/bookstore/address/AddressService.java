@@ -39,7 +39,21 @@ public class AddressService {
     // UC6.1.4 - Xóa địa chỉ giao hàng
     public void delete(Long userId, Long addressId) {
         Address a = requireOwned(userId, addressId);
-        addressRepository.delete(a);
+        boolean wasDefault = a.isDefault();
+        try {
+            addressRepository.delete(a);
+            addressRepository.flush();
+            if (wasDefault) {
+                List<Address> remaining = addressRepository.findByUserId(userId);
+                if (!remaining.isEmpty()) {
+                    Address nextDefault = remaining.get(0);
+                    nextDefault.setDefault(true);
+                    addressRepository.save(nextDefault);
+                }
+            }
+        } catch (Exception e) {
+            throw new com.bookstore.common.BadRequestException("Không thể xóa địa chỉ này vì đã được sử dụng trong các đơn hàng đã đặt của bạn.");
+        }
     }
 
     // UC6.1.5 - Chọn địa chỉ mặc định
@@ -66,6 +80,7 @@ public class AddressService {
         a.setRecipientName(req.getRecipientName());
         a.setPhone(req.getPhone());
         a.setLine1(req.getLine1());
+        a.setDistrict(req.getDistrict());
         a.setCity(req.getCity());
         if (req.isDefault()) {
             addressRepository.findByUserIdAndIsDefaultTrue(userId).ifPresent(prev -> {

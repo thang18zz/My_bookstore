@@ -36,7 +36,7 @@ public class AuthController {
     }
 
     @PutMapping("/me") // UC1.2.2
-    public ApiResponse<UserProfileDto> updateMe(@RequestBody UpdateProfileRequest req) {
+    public ApiResponse<UserProfileDto> updateMe(@Valid @RequestBody UpdateProfileRequest req) {
         return ApiResponse.ok("Profile updated", authService.updateProfile(CurrentUser.id(), req));
     }
 }
