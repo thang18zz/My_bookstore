@@ -114,6 +114,16 @@ npm run dev
 
 ---
 
+### 7. Tài khoản đăng nhập hệ thống
+
+| Loại tài khoản | Email | Mật khẩu | Ghi chú / Quyền hạn |
+| :--- | :--- | :--- | :--- |
+| **Quản trị viên (Admin)** | `admin@bookstore.vn` | `admin123` | Toàn quyền quản trị tại `/admin` (Sản phẩm, Đơn hàng, Tồn kho, Danh mục, Khách hàng, Đánh giá, Chatbot) |
+| **Khách hàng (Customer)** | Đăng ký tại `/register` | Tự đặt khi đăng ký | Mua sách, giỏ hàng, đặt hàng, sổ địa chỉ, yêu thích, đánh giá sách |
+
+---
+
+
 ## Backend Architecture (`backend/`)
 
 

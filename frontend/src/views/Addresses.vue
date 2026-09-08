@@ -308,7 +308,7 @@ function showNotice(message, type = 'success') {
 }
 
 .badge-default {
-  background: #2563eb;
+  background: var(--tb-teal-600);
   color: white;
   font-size: 0.75rem;
   font-weight: 500;
@@ -354,9 +354,9 @@ function showNotice(message, type = 'success') {
   border: none;
   transition: all 0.15s;
 }
-.btn-primary { background: #2563eb; color: white; }
-.btn-primary:hover { background: #1d4ed8; }
-.btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
+.btn-primary { background: var(--tb-teal-600); color: white; }
+.btn-primary:hover { background: var(--tb-teal-700); }
+.btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
 
 .btn-secondary { background: #f3f4f6; color: #374151; }
 .btn-secondary:hover { background: #e5e7eb; }
@@ -364,11 +364,12 @@ function showNotice(message, type = 'success') {
 .btn-sm { padding: 4px 10px; font-size: 0.8rem; }
 .btn-link {
   background: transparent;
-  color: #2563eb;
+  color: var(--tb-teal-700);
   padding: 0;
   text-decoration: underline;
+  font-weight: 600;
 }
-.btn-link:hover { color: #1d4ed8; }
+.btn-link:hover { color: var(--tb-teal-800); }
 
 .btn-edit { background: #f3f4f6; color: #1f2937; border: 1px solid #d1d5db; }
 .btn-edit:hover { background: #e5e7eb; }

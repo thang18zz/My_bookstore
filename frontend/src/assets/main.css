@@ -1,0 +1,312 @@
+/* ==========================================================================
+   BookStore Design System - CSS Tokens & Core Styles
+   ========================================================================== */
+
+:root {
+  /* Brand Teal Palette (BookStore) */
+  --tb-teal-900: #003831;
+  --tb-teal-800: #004d43;
+  --tb-teal-700: #006b5f;
+  --tb-teal-600: #008575; /* Primary Brand Teal */
+  --tb-teal-500: #0ba08f;
+  --tb-teal-200: #b5e7e1;
+  --tb-teal-100: #daf3ef;
+  --tb-teal-50:  #f0faf8;
+
+  /* Accent Amber / Gold (Rewards, Ratings, Bestseller Badges) */
+  --tb-amber-600: #d97706;
+  --tb-amber-500: #f59e0b;
+  --tb-amber-400: #fbbf24;
+  --tb-amber-100: #fef3c7;
+  --tb-amber-50:  #fffbeb;
+
+  /* Accent Brick Red (Sale, Out of stock) */
+  --tb-red-600: #dc2626;
+  --tb-red-500: #ef4444;
+  --tb-red-100: #fee2e2;
+  --tb-red-50:  #fef2f2;
+
+  /* Neutrals & Text */
+  --tb-slate-900: #111827;
+  --tb-slate-800: #1f2937;
+  --tb-slate-700: #374151;
+  --tb-slate-600: #4b5563;
+  --tb-slate-500: #6b7280;
+  --tb-slate-400: #9ca3af;
+  --tb-slate-300: #d1d5db;
+  --tb-slate-200: #e5e7eb;
+  --tb-slate-100: #f3f4f6;
+  --tb-slate-50:  #f9fafb;
+
+  /* Surface & Background */
+  --tb-bg: #f7f9f8;
+  --tb-surface: #ffffff;
+  --tb-border: #e2e8f0;
+  --tb-border-hover: #cbd5e1;
+
+  /* Typography */
+  --tb-font-serif: 'Merriweather', Georgia, Cambria, serif;
+  --tb-font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+  /* Shadows */
+  --tb-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --tb-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --tb-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --tb-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  
+  /* Book Spine 3D Shadow (Gives realistic book depth) */
+  --tb-book-shadow: -4px 4px 12px rgba(0, 0, 0, 0.12), -1px 0 3px rgba(0, 0, 0, 0.18), 3px 6px 16px rgba(0, 0, 0, 0.06);
+  --tb-book-shadow-hover: -6px 8px 20px rgba(0, 0, 0, 0.18), -2px 0 4px rgba(0, 0, 0, 0.22), 6px 12px 24px rgba(0, 0, 0, 0.1);
+
+  /* Radii */
+  --tb-radius-sm: 4px;
+  --tb-radius-md: 8px;
+  --tb-radius-lg: 12px;
+  --tb-radius-xl: 16px;
+  --tb-radius-full: 9999px;
+
+  /* Transitions */
+  --tb-transition-fast: 0.15s ease;
+  --tb-transition-normal: 0.25s ease;
+}
+
+/* Base Reset & Box Sizing */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--tb-font-sans);
+  background-color: var(--tb-bg);
+  color: var(--tb-slate-800);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--tb-slate-900);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.font-serif {
+  font-family: var(--tb-font-serif);
+}
+
+a {
+  color: var(--tb-teal-600);
+  text-decoration: none;
+  transition: color var(--tb-transition-fast);
+}
+
+a:hover {
+  color: var(--tb-teal-800);
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Button Utilities */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--tb-font-sans);
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: var(--tb-radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--tb-transition-fast);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.btn-sm {
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  border-radius: var(--tb-radius-sm);
+}
+
+.btn-lg {
+  padding: 14px 28px;
+  font-size: 1.05rem;
+  border-radius: var(--tb-radius-lg);
+}
+
+.btn-primary {
+  background-color: var(--tb-teal-600);
+  color: #ffffff;
+  border-color: var(--tb-teal-600);
+  box-shadow: 0 2px 4px rgba(0, 133, 117, 0.2);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--tb-teal-700);
+  border-color: var(--tb-teal-700);
+  color: #ffffff;
+  box-shadow: 0 4px 8px rgba(0, 133, 117, 0.3);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background-color: var(--tb-surface);
+  color: var(--tb-teal-700);
+  border-color: var(--tb-teal-600);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--tb-teal-50);
+  color: var(--tb-teal-800);
+}
+
+.btn-accent {
+  background-color: var(--tb-amber-500);
+  color: #ffffff;
+  border-color: var(--tb-amber-500);
+}
+
+.btn-accent:hover:not(:disabled) {
+  background-color: var(--tb-amber-600);
+  color: #ffffff;
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: var(--tb-slate-700);
+  border-color: var(--tb-border);
+}
+
+.btn-outline:hover:not(:disabled) {
+  background-color: var(--tb-slate-100);
+  border-color: var(--tb-slate-300);
+  color: var(--tb-slate-900);
+}
+
+.btn-danger {
+  background-color: var(--tb-red-50);
+  color: var(--tb-red-600);
+  border-color: var(--tb-red-100);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background-color: var(--tb-red-600);
+  color: #ffffff;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Form Inputs */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="tel"],
+select,
+textarea {
+  font-family: var(--tb-font-sans);
+  font-size: 0.95rem;
+  padding: 10px 14px;
+  border: 1px solid var(--tb-border);
+  border-radius: var(--tb-radius-md);
+  background-color: var(--tb-surface);
+  color: var(--tb-slate-800);
+  outline: none;
+  transition: border-color var(--tb-transition-fast), box-shadow var(--tb-transition-fast);
+  width: 100%;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--tb-teal-600);
+  box-shadow: 0 0 0 3px rgba(0, 133, 117, 0.15);
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border-radius: var(--tb-radius-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-teal {
+  background-color: var(--tb-teal-100);
+  color: var(--tb-teal-800);
+}
+
+.badge-amber {
+  background-color: var(--tb-amber-100);
+  color: var(--tb-amber-600);
+}
+
+.badge-red {
+  background-color: var(--tb-red-100);
+  color: var(--tb-red-600);
+}
+
+/* Card Surface */
+.card-surface {
+  background: var(--tb-surface);
+  border: 1px solid var(--tb-border);
+  border-radius: var(--tb-radius-lg);
+  box-shadow: var(--tb-shadow-sm);
+  transition: box-shadow var(--tb-transition-normal), transform var(--tb-transition-normal);
+}
+
+.card-surface:hover {
+  box-shadow: var(--tb-shadow-md);
+}
+
+/* Container */
+.container {
+  width: 100%;
+  max-width: 1240px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

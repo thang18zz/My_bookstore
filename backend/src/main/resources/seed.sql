@@ -10,6 +10,11 @@ DELETE FROM reviews;
 DELETE FROM products;
 DELETE FROM categories;
 
+-- Default Admin Account (password: admin123)
+INSERT INTO users (id, created_at, updated_at, active, email, full_name, password, phone, role) 
+VALUES (1, NOW(), NOW(), 1, 'admin@bookstore.vn', 'Administrator', '$2a$10$dEvjwh5vMYCVXp63dkSa7eqixZb4xig6yIdxTroLZi5ZF7IV75/Ni', '0988888888', 'ADMIN')
+ON DUPLICATE KEY UPDATE role = 'ADMIN', active = 1;
+
 INSERT INTO categories (id, name, description, created_at, updated_at) VALUES
 (1, _utf8mb4'Văn học', _utf8mb4'Tiểu thuyết, truyện ngắn, tác phẩm văn học kinh điển', NOW(), NOW()),
 (2, _utf8mb4'Kinh tế & Kỹ năng', _utf8mb4'Sách phát triển bản thân, kinh doanh, tài chính', NOW(), NOW()),
