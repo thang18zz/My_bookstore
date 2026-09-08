@@ -28,3 +28,14 @@ pnpm-debug.log*
 # OS Files
 .DS_Store
 Thumbs.db
+
+# Secrets & Local Configurations
+.env
+.env.*
+!.env.example
+*.local
+*.local.yml
+application-local.yml
+backend/src/main/resources/application-local.yml
+clean-mysql-db.bat
+
