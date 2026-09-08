@@ -324,17 +324,17 @@ async function confirm() {
   cursor: pointer;
   transition: all 0.15s;
 }
-.addr-card:hover { border-color: #93c5fd; background: #fbfdff; }
-.addr-card.selected { border-color: #2563eb; background: #f0f7ff; }
+.addr-card:hover { border-color: var(--tb-teal-200); background: var(--tb-teal-50); }
+.addr-card.selected { border-color: var(--tb-teal-600); background: var(--tb-teal-50); border-width: 2px; }
 
-.addr-radio { margin-top: 4px; }
+.addr-radio { margin-top: 4px; accent-color: var(--tb-teal-600); }
 .addr-info { flex: 1; }
 .addr-top { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
 .name { font-weight: 600; color: #111827; }
 .phone { color: #6b7280; font-size: 0.9rem; }
 .badge-def {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--tb-teal-100);
+  color: var(--tb-teal-800);
   font-size: 0.75rem;
   font-weight: 600;
   padding: 1px 6px;
@@ -346,7 +346,7 @@ async function confirm() {
   margin-top: 14px;
   font-size: 0.85rem;
 }
-.manage-link a { color: #2563eb; text-decoration: none; }
+.manage-link a { color: var(--tb-teal-700); text-decoration: none; font-weight: 600; }
 .manage-link a:hover { text-decoration: underline; }
 
 .payment-box {
@@ -422,7 +422,7 @@ async function confirm() {
   color: #111827;
   margin: 16px 0;
 }
-.total-price { color: #dc2626; font-size: 1.3rem; }
+.total-price { color: var(--tb-teal-700); font-size: 1.4rem; font-weight: 800; }
 
 .btn-checkout {
   width: 100%;
@@ -455,14 +455,14 @@ async function confirm() {
   border: none;
   transition: all 0.15s;
 }
-.btn-primary { background: #2563eb; color: white; }
-.btn-primary:hover { background: #1d4ed8; }
-.btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
+.btn-primary { background: var(--tb-teal-600); color: white; }
+.btn-primary:hover { background: var(--tb-teal-700); }
+.btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
 .btn-secondary { background: #f3f4f6; color: #374151; }
 .btn-secondary:hover { background: #e5e7eb; }
 .btn-sm { padding: 4px 10px; font-size: 0.8rem; }
-.btn-outline { background: transparent; border: 1px solid #2563eb; color: #2563eb; }
-.btn-outline:hover { background: #eff6ff; }
+.btn-outline { background: transparent; border: 1px solid var(--tb-teal-600); color: var(--tb-teal-700); }
+.btn-outline:hover { background: var(--tb-teal-50); }
 
 /* Modal styles */
 .modal-overlay {
