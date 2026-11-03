@@ -8,7 +8,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
-/** Customer-facing: Theme 4 (checkout) + Epic 5.1 (order history/detail/cancel). */
+/**
+ * Customer-facing: Theme 4 (checkout) + Epic 5.1 (order history/detail/cancel).
+ */
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
@@ -40,4 +42,5 @@ public class OrderController {
     public ApiResponse<OrderDto> cancel(@PathVariable Long id) {
         return ApiResponse.ok("Order cancelled", orderService.cancel(CurrentUser.id(), id));
     }
+
 }

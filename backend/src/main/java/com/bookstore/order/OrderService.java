@@ -13,6 +13,8 @@ import com.bookstore.common.ResourceNotFoundException;
 import com.bookstore.order.dto.*;
 import com.bookstore.product.Product;
 import com.bookstore.product.ProductRepository;
+import com.fasterxml.jackson.databind.JsonNode.OverwriteMode;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,9 +22,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.List;
 
-/** This is where Theme 3 (cart), Theme 6 (address) and Theme 4/5 (order) meet: checkout reads the
- *  live Cart and a saved Address, then produces an immutable Order + snapshot OrderItems and adjusts
- *  Product stock - implementing UC4.1.1-4 and UC4.2.1-4 in one transaction. */
+/**
+ * This is where Theme 3 (cart), Theme 6 (address) and Theme 4/5 (order) meet:
+ * checkout reads the
+ * live Cart and a saved Address, then produces an immutable Order + snapshot
+ * OrderItems and adjusts
+ * Product stock - implementing UC4.1.1-4 and UC4.2.1-4 in one transaction.
+ */
 @Service
 @RequiredArgsConstructor
 public class OrderService {
@@ -36,30 +42,36 @@ public class OrderService {
     // UC4.1.3 - Kiểm tra thông tin đơn hàng trước khi xác nhận
     public OrderPreviewDto preview(Long userId, Long addressId) {
         CartDto cart = cartService.view(userId);
-        if (cart.getItems().isEmpty()) throw new BadRequestException("Cart is empty");
+        if (cart.getItems().isEmpty())
+            throw new BadRequestException("Cart is empty");
         Address address = addressService.requireOwned(userId, addressId); // UC4.1.2
         String summary = address.getRecipientName() + " - " + address.getPhone() + " - " + address.getLine1()
                 + ", " + address.getDistrict() + ", " + address.getCity();
         return new OrderPreviewDto(cart, addressId, summary);
     }
 
-    // UC4.1.1 / UC4.1.4 / UC4.2.1-4 - Tiến hành thanh toán -> xác nhận đặt hàng -> tạo đơn hàng
+    // UC4.1.1 / UC4.1.4 / UC4.2.1-4 - Tiến hành thanh toán -> xác nhận đặt hàng ->
+    // tạo đơn hàng
     @Transactional
     public OrderDto checkout(Long userId, CheckoutRequest req) {
         User user = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User not found"));
         Address address = addressService.requireOwned(userId, req.getAddressId());
         Cart cart = cartService.getOrCreateCart(userId);
-        if (cart.getItems().isEmpty()) throw new BadRequestException("Cart is empty");
+        if (cart.getItems().isEmpty())
+            throw new BadRequestException("Cart is empty");
 
         Order order = new Order();
         order.setUser(user);
         order.setShippingAddress(address);
-        order.setStatus(OrderStatus.PENDING);
+        order.setOrderStatus(OrderStatus.PENDING);
+        order.setPaymentMethod(PaymentMethod.OFFLINE);
+        order.setPaymentStatus(PaymentStatus.UNPAID);
 
         BigDecimal total = BigDecimal.ZERO;
         for (CartItem ci : cart.getItems()) {
             Product product = ci.getProduct();
-            // Re-validate stock at the moment of purchase (UC3.2.1/UC3.2.2 checked again here)
+            // Re-validate stock at the moment of purchase (UC3.2.1/UC3.2.2 checked again
+            // here)
             if (ci.getQuantity() > product.getStockQuantity()) {
                 throw new BadRequestException("Not enough stock for " + product.getName());
             }
@@ -76,7 +88,7 @@ public class OrderService {
             productRepository.save(product);
         }
         order.setTotalAmount(total); // UC4.2.2
-        order.setStatus(OrderStatus.CONFIRMED);
+        order.setOrderStatus(OrderStatus.CONFIRMED);
         orderRepository.save(order);
 
         cartService.clear(userId); // cart consumed once the order exists
@@ -89,7 +101,8 @@ public class OrderService {
         return orderRepository.findByUserIdOrderByCreatedAtDesc(userId).stream().map(this::toDto).toList();
     }
 
-    // UC5.1.2 - Xem chi tiết đơn hàng (customer, ownership enforced) / UC5.1.3 tracking is the same view
+    // UC5.1.2 - Xem chi tiết đơn hàng (customer, ownership enforced) / UC5.1.3
+    // tracking is the same view
     public OrderDto myOrderDetail(Long userId, Long orderId) {
         Order o = orderRepository.findByIdAndUserId(orderId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
@@ -101,10 +114,10 @@ public class OrderService {
     public OrderDto cancel(Long userId, Long orderId) {
         Order o = orderRepository.findByIdAndUserId(orderId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
-        if (o.getStatus() != OrderStatus.PENDING && o.getStatus() != OrderStatus.CONFIRMED) {
+        if (o.getOrderStatus() != OrderStatus.PENDING && o.getOrderStatus() != OrderStatus.CONFIRMED) {
             throw new BadRequestException("Order can no longer be cancelled");
         }
-        o.setStatus(OrderStatus.CANCELLED);
+        o.setOrderStatus(OrderStatus.CANCELLED);
         // restock
         for (OrderItem item : o.getItems()) {
             Product p = item.getProduct();
@@ -121,7 +134,8 @@ public class OrderService {
                 .toList();
         String addr = o.getShippingAddress().getRecipientName() + " - " + o.getShippingAddress().getLine1()
                 + ", " + o.getShippingAddress().getDistrict() + ", " + o.getShippingAddress().getCity();
-        return new OrderDto(o.getId(), o.getStatus().name(), o.getTotalAmount(), o.getCreatedAt(),
+        return new OrderDto(o.getId(), o.getOrderStatus().name(), o.getPaymentMethod().name(), o.getPaymentReference(),
+                o.getTransactionId(), o.getPaymentStatus().name(), o.getPaidAt(), o.getTotalAmount(), o.getCreatedAt(),
                 o.getShippingAddress().getRecipientName(), addr, items);
     }
 
