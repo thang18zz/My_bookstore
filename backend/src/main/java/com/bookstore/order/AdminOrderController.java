@@ -19,10 +19,10 @@ public class AdminOrderController {
 
     @GetMapping // UC5.2.1 (and UC5.2.5 tra cứu when ?status= is passed)
     public ApiResponse<Page<OrderDto>> list(@RequestParam(defaultValue = "0") int page,
-                                             @RequestParam(defaultValue = "20") int size,
-                                             @RequestParam(required = false) OrderStatus status) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) OrderStatus status) {
         Page<Order> orders = status != null
-                ? orderRepository.findByStatus(status, PageRequest.of(page, size))
+                ? orderRepository.findByOrderStatus(status, PageRequest.of(page, size))
                 : orderRepository.findAll(PageRequest.of(page, size));
         return ApiResponse.ok(orders.map(orderService::toDto));
     }
@@ -35,7 +35,7 @@ public class AdminOrderController {
     @PatchMapping("/{id}/status") // UC5.2.3 / UC5.2.4 - Cập nhật trạng thái / xử lý đơn hàng
     public ApiResponse<OrderDto> updateStatus(@PathVariable Long id, @Valid @RequestBody UpdateStatusRequest req) {
         Order o = orderService.requireEntity(id);
-        o.setStatus(req.getStatus());
+        o.setOrderStatus(req.getStatus());
         return ApiResponse.ok("Order status updated", orderService.toDto(orderRepository.save(o)));
     }
 }
