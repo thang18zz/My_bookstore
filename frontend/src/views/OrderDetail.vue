@@ -89,6 +89,11 @@
               <strong class="recipient-name">{{ order.recipientName || 'Chưa cập nhật' }}</strong>
             </div>
 
+            <div v-if="order.recipientEmail" class="info-line">
+              <span class="info-label">Email nhận:</span>
+              <span class="info-val">{{ order.recipientEmail }}</span>
+            </div>
+
             <div class="info-line">
               <span class="info-label">Địa chỉ:</span>
               <p class="address-text">{{ order.shippingAddress }}</p>

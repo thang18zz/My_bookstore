@@ -21,6 +21,9 @@ public class Address extends BaseEntity {
     @Column(nullable = false)
     private String recipientName;
 
+    @Column(nullable = false, columnDefinition = "varchar(255) default ''")
+    private String email;
+
     @Column(nullable = false)
     private String phone;
 

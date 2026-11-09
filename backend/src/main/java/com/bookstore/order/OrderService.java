@@ -221,6 +221,10 @@ public class OrderService {
                 + ", " + order.getShippingAddress().getDistrict()
                 + ", " + order.getShippingAddress().getCity();
 
+        String recipientEmail = order.getShippingAddress() != null && order.getShippingAddress().getEmail() != null
+                ? order.getShippingAddress().getEmail()
+                : (order.getUser() != null ? order.getUser().getEmail() : null);
+
         return new OrderDto(
                 order.getId(),
                 order.getOrderStatus().name(),
@@ -232,6 +236,7 @@ public class OrderService {
                 order.getTotalAmount(),
                 order.getCreatedAt(),
                 order.getShippingAddress().getRecipientName(),
+                recipientEmail,
                 address,
                 items);
     }

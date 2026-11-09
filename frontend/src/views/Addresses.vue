@@ -31,6 +31,7 @@
           <div class="recipient-info">
             <span class="recipient-name">{{ a.recipientName }}</span>
             <span class="phone-number">{{ a.phone }}</span>
+            <span v-if="a.email" class="email-badge">✉️ {{ a.email }}</span>
           </div>
           <span v-if="a.default" class="badge-default">Địa chỉ mặc định</span>
         </div>
@@ -73,21 +74,26 @@
               </div>
 
               <div class="form-group half">
-                <label>Số điện thoại <span class="req">*</span></label>
-                <input v-model="form.phone" placeholder="Ví dụ: 0912345678" required />
+                <label>Email người nhận <span class="req">*</span></label>
+                <input type="email" v-model="form.email" placeholder="Ví dụ: nguyenvana@gmail.com" required />
               </div>
             </div>
 
             <div class="form-row">
               <div class="form-group half">
-                <label>Tỉnh / Thành phố <span class="req">*</span></label>
-                <input v-model="form.city" placeholder="Ví dụ: Hà Nội / TP. Hồ Chí Minh" required />
+                <label>Số điện thoại <span class="req">*</span></label>
+                <input v-model="form.phone" placeholder="Ví dụ: 0912345678" required />
               </div>
 
               <div class="form-group half">
-                <label>Quận / Huyện <span class="req">*</span></label>
-                <input v-model="form.district" placeholder="Ví dụ: Cầu Giấy / Quận 1" required />
+                <label>Tỉnh / Thành phố <span class="req">*</span></label>
+                <input v-model="form.city" placeholder="Ví dụ: Hà Nội / TP. Hồ Chí Minh" required />
               </div>
+            </div>
+
+            <div class="form-group">
+              <label>Quận / Huyện <span class="req">*</span></label>
+              <input v-model="form.district" placeholder="Ví dụ: Cầu Giấy / Quận 1" required />
             </div>
 
             <div class="form-group">
@@ -127,6 +133,7 @@ const notice = ref(null)
 
 const form = reactive({
   recipientName: '',
+  email: '',
   phone: '',
   line1: '',
   district: '',
@@ -149,6 +156,7 @@ function openNew() {
   editingId.value = null
   Object.assign(form, {
     recipientName: '',
+    email: '',
     phone: '',
     line1: '',
     district: '',
@@ -162,6 +170,7 @@ function edit(a) {
   editingId.value = a.id
   Object.assign(form, {
     recipientName: a.recipientName,
+    email: a.email || '',
     phone: a.phone,
     line1: a.line1,
     district: a.district,
@@ -295,6 +304,7 @@ function showNotice(message, type = 'success') {
 .recipient-info {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
 }
 .recipient-name {
@@ -305,6 +315,17 @@ function showNotice(message, type = 'success') {
 .phone-number {
   color: #6b7280;
   font-size: 0.9rem;
+}
+.email-badge {
+  font-size: 0.82rem;
+  color: #0f766e;
+  background: #ccfbf1;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .badge-default {

@@ -23,6 +23,7 @@ public class OrderDto {
     private BigDecimal totalAmount;
     private LocalDateTime createdAt;
     private String recipientName;
+    private String recipientEmail;
     private String shippingAddress;
     private List<OrderItemDto> items;
 

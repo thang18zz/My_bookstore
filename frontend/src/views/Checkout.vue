@@ -37,6 +37,7 @@
                 <div class="addr-top">
                   <span class="name">{{ a.recipientName }}</span>
                   <span class="phone">{{ a.phone }}</span>
+                  <span v-if="a.email" class="email">✉️ {{ a.email }}</span>
                   <span v-if="a.default" class="badge-def">Mặc định</span>
                 </div>
                 <div class="addr-detail">
@@ -66,8 +67,8 @@
             <label :class="['payment-option-card', { selected: paymentMethod === 'ONLINE' }]">
               <input type="radio" value="ONLINE" v-model="paymentMethod" name="paymentMethod" />
               <div class="option-content">
-                <div class="option-title">💳 Thanh toán online (Mona Pay / QR Chuyển khoản)</div>
-                <div class="option-desc">Thanh toán trực tuyến bảo mật qua cổng thanh toán Mona Pay (VietQR / Ngân hàng).</div>
+                <div class="option-title">💳 Thanh toán online (Mã QR Mona Pay)</div>
+                <div class="option-desc">Thanh toán trực tuyến bảo mật qua cổng thanh toán Mona Pay (Quét mã QR).</div>
               </div>
             </label>
           </div>
@@ -151,20 +152,25 @@
                 <input v-model="newAddr.recipientName" placeholder="Nguyễn Văn A" required />
               </div>
               <div class="form-group half">
-                <label>Số điện thoại <span class="req">*</span></label>
-                <input v-model="newAddr.phone" placeholder="0912345678" required />
+                <label>Email người nhận <span class="req">*</span></label>
+                <input type="email" v-model="newAddr.email" placeholder="nguyenvana@gmail.com" required />
               </div>
             </div>
 
             <div class="form-row">
               <div class="form-group half">
+                <label>Số điện thoại <span class="req">*</span></label>
+                <input v-model="newAddr.phone" placeholder="0912345678" required />
+              </div>
+              <div class="form-group half">
                 <label>Tỉnh / Thành phố <span class="req">*</span></label>
                 <input v-model="newAddr.city" placeholder="Hà Nội" required />
               </div>
-              <div class="form-group half">
-                <label>Quận / Huyện <span class="req">*</span></label>
-                <input v-model="newAddr.district" placeholder="Cầu Giấy" required />
-              </div>
+            </div>
+
+            <div class="form-group">
+              <label>Quận / Huyện <span class="req">*</span></label>
+              <input v-model="newAddr.district" placeholder="Cầu Giấy" required />
             </div>
 
             <div class="form-group">
@@ -213,6 +219,7 @@ const cart = useCartStore()
 
 const newAddr = reactive({
   recipientName: '',
+  email: '',
   phone: '',
   line1: '',
   district: '',
@@ -344,9 +351,10 @@ async function confirm() {
 
 .addr-radio { margin-top: 4px; accent-color: var(--tb-teal-600); }
 .addr-info { flex: 1; }
-.addr-top { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; }
+.addr-top { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 4px; }
 .name { font-weight: 600; color: #111827; }
 .phone { color: #6b7280; font-size: 0.9rem; }
+.addr-top .email { color: var(--tb-teal-700); font-size: 0.85rem; font-weight: 500; }
 .badge-def {
   background: var(--tb-teal-100);
   color: var(--tb-teal-800);

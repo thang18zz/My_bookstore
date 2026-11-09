@@ -131,6 +131,10 @@
               <span class="label">Người nhận hàng:</span>
               <strong class="value">{{ order.recipientName || 'Chưa cập nhật' }}</strong>
             </div>
+            <div v-if="order.recipientEmail" class="info-group">
+              <span class="label">Email nhận thông báo:</span>
+              <strong class="value">{{ order.recipientEmail }}</strong>
+            </div>
             <div class="info-group">
               <span class="label">Địa chỉ nhận hàng:</span>
               <p class="value address-val">{{ order.shippingAddress }}</p>
@@ -216,44 +220,21 @@
             <div class="modal-tag">Mona Pay Sandbox</div>
             <h2 class="font-serif modal-title">Quét mã QR để thanh toán</h2>
             <p class="modal-subtitle">
-              Sử dụng <strong>Camera điện thoại</strong> hoặc <strong>Ứng dụng Ngân hàng</strong> để quét mã QR bên dưới
+              Sử dụng <strong>Camera điện thoại</strong> để quét mã QR thanh toán qua <strong>Mona Pay</strong>
             </p>
-          </div>
-
-          <!-- Mode selector tab: Camera phone vs Banking app -->
-          <div class="qr-mode-tabs">
-            <button 
-              type="button" 
-              :class="['qr-mode-btn', qrMode === 'camera' ? 'active' : '']"
-              @click="qrMode = 'camera'"
-            >
-              📷 Camera điện thoại
-            </button>
-            <button 
-              type="button" 
-              :class="['qr-mode-btn', qrMode === 'bank' ? 'active' : '']"
-              @click="qrMode = 'bank'"
-            >
-              🏦 App Ngân hàng (VietQR)
-            </button>
           </div>
 
           <div class="qr-display-box">
             <div class="qr-image-wrapper">
               <img 
-                :src="currentQrUrl" 
+                :src="qrData.qrImageUrl || ('https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=' + encodeURIComponent(qrData.checkoutUrl))" 
                 alt="Mã QR thanh toán Mona Pay" 
                 class="qr-code-img"
               />
             </div>
 
             <div class="qr-instruction">
-              <span v-if="qrMode === 'camera'">
-                📱 Mở <strong>Camera trên điện thoại</strong>, đưa ống kính về mã QR để mở trang thanh toán Mona Pay.
-              </span>
-              <span v-else>
-                🏦 Mở <strong>Ứng dụng Ngân hàng</strong> bất kỳ (VCB, MB, Techcombank, ...) để quét chuyển khoản.
-              </span>
+              📱 Đưa ống kính camera trên điện thoại vào mã QR để thanh toán qua cổng <strong>Mona Pay</strong>.
             </div>
 
             <div class="amount-badge">
@@ -378,19 +359,10 @@ const paying = ref(false)
 // QR Payment Modal & Realtime Polling State
 const showQrModal = ref(false)
 const qrData = ref(null)
-const qrMode = ref('camera')
 const polling = ref(false)
 const paymentSuccess = ref(false)
 const toastMessage = ref('')
 let pollTimer = null
-
-const currentQrUrl = computed(() => {
-  if (!qrData.value) return ''
-  if (qrMode.value === 'camera' && qrData.value.checkoutUrl) {
-    return 'https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=' + encodeURIComponent(qrData.value.checkoutUrl)
-  }
-  return qrData.value.qrImageUrl || getVietQrUrl(qrData.value)
-})
 
 onMounted(loadOrder)
 
@@ -422,6 +394,7 @@ const isOnlinePayment = computed(() => {
 })
 
 const userEmail = computed(() => {
+  if (order.value?.recipientEmail) return order.value.recipientEmail
   try {
     const token = localStorage.getItem('token')
     if (token) {
@@ -482,13 +455,6 @@ function stopPolling() {
 function closeQrModal() {
   showQrModal.value = false
   stopPolling()
-}
-
-function getVietQrUrl(data) {
-  if (!data || !data.bankAccount) {
-    return 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(data?.checkoutUrl || window.location.href)
-  }
-  return `https://img.vietqr.io/image/${data.bankCode || 'ACB'}-${data.bankAccount}-compact2.png?amount=${order.value.totalAmount}&addInfo=${data.transferContent || ('ORDER-' + order.value.id)}&accountName=${encodeURIComponent(data.accountName || 'BOOKSTORE')}`
 }
 
 function copyText(text, label) {
@@ -1096,35 +1062,6 @@ function getPaymentStatusText(pStatus) {
   color: #475569;
   margin: 0;
   line-height: 1.45;
-}
-
-/* Mode selector tab */
-.qr-mode-tabs {
-  display: flex;
-  background: #f1f5f9;
-  padding: 4px;
-  border-radius: 10px;
-  margin-bottom: 16px;
-  gap: 4px;
-}
-
-.qr-mode-btn {
-  flex: 1;
-  padding: 8px 12px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  border: none;
-  background: transparent;
-  color: #64748b;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.qr-mode-btn.active {
-  background: #ffffff;
-  color: var(--tb-teal-700, #0f766e);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .qr-instruction {

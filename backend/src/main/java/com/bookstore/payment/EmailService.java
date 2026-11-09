@@ -39,18 +39,24 @@ public class EmailService {
             return;
         }
 
-        if (order.getUser() == null || order.getUser().getEmail() == null || order.getUser().getEmail().isBlank()) {
-            log.warn("Cannot send invoice: user email is missing for order #{}", order.getId());
+        String toEmail = null;
+        if (order.getShippingAddress() != null && order.getShippingAddress().getEmail() != null && !order.getShippingAddress().getEmail().isBlank()) {
+            toEmail = order.getShippingAddress().getEmail().trim();
+        } else if (order.getUser() != null && order.getUser().getEmail() != null && !order.getUser().getEmail().isBlank()) {
+            toEmail = order.getUser().getEmail().trim();
+        }
+
+        if (toEmail == null || toEmail.isBlank()) {
+            log.warn("Cannot send invoice: recipient email is missing for order #{}", order.getId());
             return;
         }
 
-        String toEmail = order.getUser().getEmail().trim();
         String customerName = order.getShippingAddress() != null && order.getShippingAddress().getRecipientName() != null
                 ? order.getShippingAddress().getRecipientName()
-                : (order.getUser().getFullName() != null ? order.getUser().getFullName() : "Quý khách");
+                : (order.getUser() != null && order.getUser().getFullName() != null ? order.getUser().getFullName() : "Quý khách");
 
         String subject = "[BookStore] Hóa đơn thanh toán thành công đơn hàng #ORDER-" + order.getId();
-        String htmlContent = buildInvoiceHtml(order, customerName);
+        String htmlContent = buildInvoiceHtml(order, customerName, toEmail);
 
         JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
 
@@ -78,7 +84,7 @@ public class EmailService {
         }
     }
 
-    private String buildInvoiceHtml(Order order, String customerName) {
+    private String buildInvoiceHtml(Order order, String customerName, String recipientEmail) {
         String paidDate = order.getPaidAt() != null
                 ? order.getPaidAt().format(DATE_FORMAT)
                 : (order.getCreatedAt() != null ? order.getCreatedAt().format(DATE_FORMAT) : "Vừa xong");
@@ -91,7 +97,7 @@ public class EmailService {
 
         String phoneStr = order.getShippingAddress() != null && order.getShippingAddress().getPhone() != null
                 ? order.getShippingAddress().getPhone()
-                : (order.getUser().getPhone() != null ? order.getUser().getPhone() : "Chưa cập nhật");
+                : (order.getUser() != null && order.getUser().getPhone() != null ? order.getUser().getPhone() : "Chưa cập nhật");
 
         StringBuilder itemsRows = new StringBuilder();
         if (order.getItems() != null) {
@@ -142,7 +148,7 @@ public class EmailService {
                 + "        </div>"
                 + "        <div style=\"display:flex; justify-content:space-between; margin-bottom:8px; font-size:14px;\">"
                 + "          <span style=\"color:#0f766e; font-weight:600;\">Phương thức thanh toán:</span>"
-                + "          <span style=\"color:#334155;\">Mona Pay (Quét mã VietQR)</span>"
+                + "          <span style=\"color:#334155;\">Mona Pay (Quét mã QR)</span>"
                 + "        </div>"
                 + "        <div style=\"display:flex; justify-content:space-between; margin-bottom:8px; font-size:14px;\">"
                 + "          <span style=\"color:#0f766e; font-weight:600;\">Mã giao dịch:</span>"
@@ -172,7 +178,7 @@ public class EmailService {
                 + "        <p style=\"margin: 8px 0; font-size: 18px; color: #0f172a;\">Tổng số tiền thanh toán: <strong style=\"color:#0d9488; font-size: 20px;\">" + totalStr + " đ</strong></p>"
                 + "      </div>"
                 + "      <div style=\"background: #f8fafc; border-radius: 8px; padding: 14px 18px; font-size: 13px; color: #475569; line-height: 1.5;\">"
-                + "        <strong style=\"color:#0f172a;\">📍 Địa chỉ nhận hàng:</strong> " + customerName + " (" + phoneStr + ") - " + shippingAddressStr + "<br>"
+                + "        <strong style=\"color:#0f172a;\">📍 Địa chỉ nhận hàng:</strong> " + customerName + " (" + phoneStr + (recipientEmail != null ? " • " + recipientEmail : "") + ") - " + shippingAddressStr + "<br>"
                 + "        <em>* Đơn hàng sẽ sớm được đóng gói và giao đến quý khách trong thời gian sớm nhất.</em>"
                 + "      </div>"
                 + "    </div>"

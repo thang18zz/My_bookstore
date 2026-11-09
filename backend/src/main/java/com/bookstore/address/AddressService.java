@@ -78,6 +78,7 @@ public class AddressService {
 
     private void applyRequest(Address a, AddressRequest req, Long userId) {
         a.setRecipientName(req.getRecipientName());
+        a.setEmail(req.getEmail());
         a.setPhone(req.getPhone());
         a.setLine1(req.getLine1());
         a.setDistrict(req.getDistrict());
