@@ -18,12 +18,14 @@ import com.bookstore.payment.monapay.MonaPayConfig;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PaymentService {
@@ -48,22 +50,18 @@ public class PaymentService {
 
         // Already paid.
         if (order.getPaymentStatus() == PaymentStatus.PAID) {
-
-            throw new BadRequestException(
-                    "This order has already been paid");
+            throw new BadRequestException("This order has already been paid");
         }
 
         if (order.getOrderStatus() != OrderStatus.PENDING) {
-
-            throw new BadRequestException(
-                    "This order cannot be paid");
+            throw new BadRequestException("This order cannot be paid");
         }
 
         if (order.getPaymentMethod() != PaymentMethod.ONLINE) {
-
-            throw new BadRequestException(
-                    "This order does not use online payment");
+            throw new BadRequestException("This order does not use online payment");
         }
+
+        String orderCode = "ORDER-" + order.getId();
 
         /*
          * If a checkout already exists, reuse it.
@@ -71,71 +69,79 @@ public class PaymentService {
         if (order.getPaymentReference() != null
                 && !order.getPaymentReference().isBlank()) {
 
-            JsonNode existingResponse = monaPayClient.getCheckout(
-                    order.getPaymentReference());
+            try {
+                JsonNode existingResponse = monaPayClient.getCheckout(order.getPaymentReference());
+                JsonNode existing = monaPayClient.extractData(existingResponse);
 
-            JsonNode existing = monaPayClient.extractData(
-                    existingResponse);
+                String status = existing.path("status").asText();
 
-            String status = existing.path("status").asText();
-
-            if ("pending".equalsIgnoreCase(status)) {
-
-                return new CreatePaymentResponse(
-                        order.getId(),
-                        order.getTotalAmount(),
-                        order.getPaymentReference(),
-                        existing.path("checkout_url").asText(),
-                        order.getPaymentStatus().name(),
-                        order.getCreatedAt().plusSeconds(
-                                config.getExpiresIn()));
+                if ("pending".equalsIgnoreCase(status)) {
+                    return buildCreatePaymentResponse(order, existing);
+                }
+            } catch (Exception e) {
+                log.warn("Could not reuse existing checkout {}: {}. Generating new checkout.",
+                        order.getPaymentReference(), e.getMessage());
             }
-
-            throw new BadRequestException(
-                    "Existing checkout is no longer pending. "
-                            + "Please create a new order or handle checkout expiry.");
         }
 
         /*
-         * Build unique order code.
-         */
-        String orderCode = "ORDER-" + order.getId();
-
-        /*
-         * Create Checkout.
+         * Create Checkout on MONA Pay.
          */
         JsonNode response = monaPayClient.createCheckout(
-                order.getTotalAmount().longValueExact(),
+                order.getTotalAmount().longValue(),
                 orderCode,
                 "Payment for bookstore order " + orderCode);
 
         JsonNode data = monaPayClient.extractData(response);
 
         String checkoutId = data.path("id").asText(null);
-
         String checkoutUrl = data.path("checkout_url").asText(null);
 
-        if (checkoutId == null || checkoutUrl == null
-                || checkoutUrl.isBlank()) {
-
-            throw new IllegalStateException(
-                    "MONA Pay did not return checkout information");
+        if (checkoutId == null || checkoutUrl == null || checkoutUrl.isBlank()) {
+            throw new IllegalStateException("MONA Pay did not return checkout information");
         }
 
         /*
          * Save MONA Pay Checkout ID.
          */
         order.setPaymentReference(checkoutId);
-
         orderRepository.save(order);
+
+        return buildCreatePaymentResponse(order, data);
+    }
+
+    private CreatePaymentResponse buildCreatePaymentResponse(Order order, JsonNode data) {
+        String checkoutId = data.path("id").asText(order.getPaymentReference());
+        String checkoutUrl = data.path("checkout_url").asText(null);
+        String qrImageUrl = data.path("qr_image_url").asText(null);
+        String qrDataUrl = data.path("qr_data_url").asText(null);
+
+        JsonNode bankNode = data.path("bank");
+        String bankCode = bankNode.path("code").asText(null);
+        String bankName = bankNode.path("name").asText(null);
+        String bankAccount = bankNode.path("account_number").asText(null);
+        String accountName = bankNode.path("account_name").asText(null);
+        String transferContent = bankNode.path("transfer_content").asText("ORDER-" + order.getId());
+
+        LocalDateTime expiresAt = order.getCreatedAt() != null
+                ? order.getCreatedAt().plusSeconds(config.getExpiresIn())
+                : LocalDateTime.now().plusSeconds(config.getExpiresIn());
 
         return new CreatePaymentResponse(
                 order.getId(),
                 order.getTotalAmount(),
                 checkoutId,
                 checkoutUrl,
-                PaymentStatus.UNPAID.name(),
-                LocalDateTime.now().plusSeconds(config.getExpiresIn()));
+                order.getPaymentStatus().name(),
+                expiresAt,
+                qrImageUrl,
+                qrDataUrl,
+                bankCode,
+                bankName,
+                bankAccount,
+                accountName,
+                transferContent
+        );
     }
 
     /**

@@ -50,18 +50,19 @@
           <div v-if="order.paymentStatus !== 'PAID'" class="pay-cta-box">
             <div class="pay-cta-info">
               <h3>💳 Tiến hành thanh toán đơn hàng</h3>
-              <p>Đơn hàng được chọn thanh toán trực tuyến qua cổng thanh toán <strong>Mona Pay</strong>. Vui lòng nhấn nút bên dưới để chuyển sang cổng thanh toán hoặc quét mã QR ngân hàng.</p>
+              <p>Quét mã QR bằng ứng dụng ngân hàng hoặc camera trên điện thoại để hoàn tất thanh toán qua <strong>Mona Pay</strong>.</p>
             </div>
             <button 
               class="btn btn-primary btn-pay-now" 
               :disabled="paying"
               @click="handlePayNow"
             >
-              {{ paying ? 'Đang chuyển hướng thanh toán...' : 'Thanh toán' }}
+              {{ paying ? 'Đang tạo mã QR...' : 'Thanh toán' }}
             </button>
           </div>
           <div v-else class="paid-alert">
-            ✓ Đơn hàng này đã được thanh toán thành công qua Mona Pay!
+            <div class="paid-alert-title">✓ Đơn hàng đã được thanh toán thành công!</div>
+            <div class="paid-alert-sub">Hóa đơn chi tiết đã được gửi về Gmail: <strong>{{ userEmail || 'của bạn' }}</strong></div>
           </div>
         </div>
 
@@ -188,7 +189,7 @@
               :disabled="paying"
               @click="handlePayNow"
             >
-              {{ paying ? 'Đang chuyển hướng...' : '💳 Thanh toán ngay' }}
+              {{ paying ? 'Đang tạo mã QR...' : '💳 Quét mã QR thanh toán' }}
             </button>
 
             <router-link :to="`/orders/${order.id}`" class="btn btn-outline btn-block">
@@ -202,11 +203,166 @@
         </div>
       </div>
     </div>
+
+    <!-- QR Payment Modal Overlay -->
+    <div v-if="showQrModal" class="modal-overlay" @click.self="closeQrModal">
+      <div class="modal-card">
+        <!-- Close button -->
+        <button class="modal-close-btn" @click="closeQrModal">&times;</button>
+
+        <!-- State 1: Awaiting Payment (Showing QR code) -->
+        <div v-if="!paymentSuccess && qrData" class="qr-payment-content">
+          <div class="modal-header-section">
+            <div class="modal-tag">Mona Pay Sandbox</div>
+            <h2 class="font-serif modal-title">Quét mã QR để thanh toán</h2>
+            <p class="modal-subtitle">
+              Sử dụng <strong>Camera điện thoại</strong> hoặc <strong>Ứng dụng Ngân hàng</strong> để quét mã QR bên dưới
+            </p>
+          </div>
+
+          <!-- Mode selector tab: Camera phone vs Banking app -->
+          <div class="qr-mode-tabs">
+            <button 
+              type="button" 
+              :class="['qr-mode-btn', qrMode === 'camera' ? 'active' : '']"
+              @click="qrMode = 'camera'"
+            >
+              📷 Camera điện thoại
+            </button>
+            <button 
+              type="button" 
+              :class="['qr-mode-btn', qrMode === 'bank' ? 'active' : '']"
+              @click="qrMode = 'bank'"
+            >
+              🏦 App Ngân hàng (VietQR)
+            </button>
+          </div>
+
+          <div class="qr-display-box">
+            <div class="qr-image-wrapper">
+              <img 
+                :src="currentQrUrl" 
+                alt="Mã QR thanh toán Mona Pay" 
+                class="qr-code-img"
+              />
+            </div>
+
+            <div class="qr-instruction">
+              <span v-if="qrMode === 'camera'">
+                📱 Mở <strong>Camera trên điện thoại</strong>, đưa ống kính về mã QR để mở trang thanh toán Mona Pay.
+              </span>
+              <span v-else>
+                🏦 Mở <strong>Ứng dụng Ngân hàng</strong> bất kỳ (VCB, MB, Techcombank, ...) để quét chuyển khoản.
+              </span>
+            </div>
+
+            <div class="amount-badge">
+              <span class="amount-label">Số tiền cần thanh toán:</span>
+              <span class="amount-val">{{ order.totalAmount.toLocaleString() }} đ</span>
+            </div>
+          </div>
+
+          <!-- Live payment status radar -->
+          <div class="live-status-bar">
+            <span class="radar-dot"></span>
+            <span>Đang chờ bạn quét mã và thanh toán... Hệ thống sẽ tự động xác nhận ngay lập tức!</span>
+          </div>
+
+          <!-- Bank Account Details with Copy Buttons -->
+          <div class="bank-details-box">
+            <div class="bank-row">
+              <span class="b-lbl">Ngân hàng:</span>
+              <strong class="b-val">{{ qrData.bankName || 'Mona Pay Sandbox' }}</strong>
+            </div>
+
+            <div v-if="qrData.bankAccount" class="bank-row">
+              <span class="b-lbl">Số tài khoản:</span>
+              <div class="b-val-group">
+                <code class="b-code">{{ qrData.bankAccount }}</code>
+                <button class="btn-copy" @click="copyText(qrData.bankAccount, 'Số tài khoản')">Sao chép</button>
+              </div>
+            </div>
+
+            <div v-if="qrData.accountName" class="bank-row">
+              <span class="b-lbl">Chủ tài khoản:</span>
+              <strong class="b-val">{{ qrData.accountName }}</strong>
+            </div>
+
+            <div class="bank-row">
+              <span class="b-lbl">Nội dung CK:</span>
+              <div class="b-val-group">
+                <code class="b-code font-bold">{{ qrData.transferContent || ('ORDER-' + order.id) }}</code>
+                <button class="btn-copy" @click="copyText(qrData.transferContent || ('ORDER-' + order.id), 'Nội dung chuyển khoản')">Sao chép</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sandbox Direct Checkout Link -->
+          <div class="sandbox-action-row">
+            <a 
+              v-if="qrData.checkoutUrl" 
+              :href="qrData.checkoutUrl" 
+              target="_blank" 
+              class="btn btn-outline btn-sm-link"
+            >
+              ↗ Mở trang thanh toán Mona Pay (Sandbox Web)
+            </a>
+          </div>
+        </div>
+
+        <!-- State 2: Payment Succeeded! 🎉 -->
+        <div v-else-if="paymentSuccess" class="payment-success-content">
+          <div class="success-anim-badge">🎉</div>
+          <h2 class="font-serif success-heading">Thanh toán thành công!</h2>
+          <p class="success-lead">
+            Hệ thống Mona Pay đã xác nhận thanh toán cho đơn hàng <strong>#{{ order.id }}</strong>.
+          </p>
+
+          <div class="invoice-sent-card">
+            <div class="mail-icon">📧</div>
+            <div class="mail-text">
+              <div class="mail-title">Hóa đơn chi tiết đã được gửi về Gmail</div>
+              <div class="mail-target">{{ userEmail || 'Email đặt hàng của bạn' }}</div>
+              <small class="mail-hint">Vui lòng kiểm tra hộp thư đến (Inbox) hoặc thư mục Quảng cáo/Spam.</small>
+            </div>
+          </div>
+
+          <div class="success-order-summary">
+            <div class="s-row">
+              <span>Mã giao dịch:</span>
+              <code>{{ order.transactionId || 'MONAPAY-SUCCESS' }}</code>
+            </div>
+            <div class="s-row">
+              <span>Số tiền đã thanh toán:</span>
+              <strong>{{ order.totalAmount.toLocaleString() }} đ</strong>
+            </div>
+            <div class="s-row">
+              <span>Trạng thái đơn hàng:</span>
+              <span class="status-pill status-confirmed">✓ Đã xác nhận</span>
+            </div>
+          </div>
+
+          <div class="success-actions">
+            <button class="btn btn-primary btn-block" @click="closeQrModal">
+              Xem đơn hàng đã thanh toán
+            </button>
+            <router-link :to="`/orders/${order.id}`" class="btn btn-outline btn-block">
+              Trang chi tiết đơn hàng
+            </router-link>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notification for Copy -->
+    <div v-if="toastMessage" class="toast-popup">
+      {{ toastMessage }}
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import orderApi from '../api/orderApi'
 import paymentApi from '../api/paymentApi'
@@ -219,7 +375,28 @@ const loading = ref(true)
 const error = ref('')
 const paying = ref(false)
 
+// QR Payment Modal & Realtime Polling State
+const showQrModal = ref(false)
+const qrData = ref(null)
+const qrMode = ref('camera')
+const polling = ref(false)
+const paymentSuccess = ref(false)
+const toastMessage = ref('')
+let pollTimer = null
+
+const currentQrUrl = computed(() => {
+  if (!qrData.value) return ''
+  if (qrMode.value === 'camera' && qrData.value.checkoutUrl) {
+    return 'https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=' + encodeURIComponent(qrData.value.checkoutUrl)
+  }
+  return qrData.value.qrImageUrl || getVietQrUrl(qrData.value)
+})
+
 onMounted(loadOrder)
+
+onUnmounted(() => {
+  stopPolling()
+})
 
 async function loadOrder() {
   loading.value = true
@@ -244,22 +421,86 @@ const isOnlinePayment = computed(() => {
   return (order.value.paymentMethod || '').toUpperCase() === 'ONLINE'
 })
 
+const userEmail = computed(() => {
+  try {
+    const token = localStorage.getItem('token')
+    if (token) {
+      const payload = JSON.parse(atob(token.split('.')[1]))
+      return payload.sub || ''
+    }
+  } catch (e) {}
+  return ''
+})
+
 async function handlePayNow() {
   if (!order.value || paying.value) return
   paying.value = true
   try {
     const res = await paymentApi.create(order.value.id)
-    const checkoutUrl = res.data?.checkoutUrl
-    if (checkoutUrl) {
-      window.location.href = checkoutUrl
-    } else {
-      alert('Không nhận được đường dẫn thanh toán từ cổng Mona Pay.')
+    qrData.value = res.data
+    paymentSuccess.value = (res.data?.paymentStatus === 'PAID')
+    showQrModal.value = true
+
+    if (!paymentSuccess.value) {
+      startPollingPayment()
     }
   } catch (err) {
-    alert('Khởi tạo thanh toán thất bại: ' + (err.response?.data?.message || err.message))
+    alert('Khởi tạo thanh toán Mona Pay thất bại: ' + (err.response?.data?.message || err.message))
   } finally {
     paying.value = false
   }
+}
+
+function startPollingPayment() {
+  stopPolling()
+  polling.value = true
+  pollTimer = setInterval(async () => {
+    try {
+      const res = await paymentApi.status(order.value.id)
+      if (res.data?.paymentStatus === 'PAID') {
+        stopPolling()
+        paymentSuccess.value = true
+        order.value.paymentStatus = 'PAID'
+        if (res.data.transactionId) order.value.transactionId = res.data.transactionId
+        if (res.data.paidAt) order.value.paidAt = res.data.paidAt
+        order.value.orderStatus = res.data.orderStatus || 'CONFIRMED'
+      }
+    } catch (e) {
+      console.warn('Lỗi kiểm tra trạng thái thanh toán:', e)
+    }
+  }, 2500)
+}
+
+function stopPolling() {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+  polling.value = false
+}
+
+function closeQrModal() {
+  showQrModal.value = false
+  stopPolling()
+}
+
+function getVietQrUrl(data) {
+  if (!data || !data.bankAccount) {
+    return 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(data?.checkoutUrl || window.location.href)
+  }
+  return `https://img.vietqr.io/image/${data.bankCode || 'ACB'}-${data.bankAccount}-compact2.png?amount=${order.value.totalAmount}&addInfo=${data.transferContent || ('ORDER-' + order.value.id)}&accountName=${encodeURIComponent(data.accountName || 'BOOKSTORE')}`
+}
+
+function copyText(text, label) {
+  if (!text) return
+  navigator.clipboard.writeText(text).then(() => {
+    toastMessage.value = `Đã sao chép ${label}!`
+    setTimeout(() => {
+      toastMessage.value = ''
+    }, 2500)
+  }).catch(() => {
+    prompt('Sao chép thông tin:', text)
+  })
 }
 
 function formatDate(dateStr) {
@@ -492,9 +733,20 @@ function getPaymentStatusText(pStatus) {
   background: #ecfdf5;
   color: #065f46;
   border: 1px solid #a7f3d0;
-  padding: 14px 20px;
-  border-radius: 8px;
-  font-weight: 600;
+  padding: 18px 24px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.paid-alert-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.paid-alert-sub {
+  font-size: 0.95rem;
+  color: #047857;
 }
 
 .cod-banner {
@@ -748,5 +1000,413 @@ function getPaymentStatusText(pStatus) {
   background: #f1f5f9;
   color: #1e293b;
 }
-</style>
 
+/* ========================================================
+   QR PAYMENT MODAL OVERLAY & POPUP STYLES
+   ======================================================== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-card {
+  background: #ffffff;
+  border-radius: 16px;
+  max-width: 520px;
+  width: 100%;
+  max-height: 92vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  padding: 28px;
+  animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes scaleUp {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  background: #f1f5f9;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.modal-close-btn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.modal-header-section {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.modal-tag {
+  display: inline-block;
+  background: #ccfbf1;
+  color: #0f766e;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 20px;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.modal-title {
+  font-size: 1.5rem;
+  color: #0f172a;
+  margin: 0 0 6px 0;
+}
+
+.modal-subtitle {
+  font-size: 0.9rem;
+  color: #475569;
+  margin: 0;
+  line-height: 1.45;
+}
+
+/* Mode selector tab */
+.qr-mode-tabs {
+  display: flex;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  gap: 4px;
+}
+
+.qr-mode-btn {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.qr-mode-btn.active {
+  background: #ffffff;
+  color: var(--tb-teal-700, #0f766e);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.qr-instruction {
+  font-size: 0.82rem;
+  color: #475569;
+  text-align: center;
+  margin: 6px 0 12px 0;
+  line-height: 1.4;
+  padding: 0 10px;
+}
+
+.qr-display-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 16px;
+}
+
+.qr-image-wrapper {
+  background: #ffffff;
+  padding: 12px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qr-code-img {
+  width: 220px;
+  height: 220px;
+  object-fit: contain;
+  display: block;
+}
+
+.amount-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.92rem;
+}
+
+.amount-label {
+  color: #64748b;
+}
+
+.amount-val {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--tb-teal-700, #0f766e);
+}
+
+/* Radar live status indicator */
+.live-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.84rem;
+  color: #166534;
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+
+.radar-dot {
+  width: 10px;
+  height: 10px;
+  background: #22c55e;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  animation: radarPulse 1.6s infinite;
+}
+
+@keyframes radarPulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+
+/* Bank Details Table */
+.bank-details-box {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.bank-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.88rem;
+  gap: 12px;
+}
+
+.b-lbl {
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.b-val {
+  color: #0f172a;
+  text-align: right;
+}
+
+.b-val-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.b-code {
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.88rem;
+  color: #0f172a;
+}
+
+.btn-copy {
+  background: #e2e8f0;
+  border: none;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-copy:hover {
+  background: #cbd5e1;
+  color: #0f172a;
+}
+
+.sandbox-action-row {
+  text-align: center;
+}
+
+.btn-sm-link {
+  font-size: 0.85rem;
+  padding: 8px 14px;
+  display: inline-block;
+  color: var(--tb-teal-700, #0f766e);
+  border-color: #99f6e4;
+  background: #f0fdfa;
+}
+
+.btn-sm-link:hover {
+  background: #ccfbf1;
+}
+
+/* Payment Success View in Modal */
+.payment-success-content {
+  text-align: center;
+  padding: 12px 0;
+}
+
+.success-anim-badge {
+  font-size: 3.5rem;
+  margin-bottom: 12px;
+  animation: bounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes bounce {
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.success-heading {
+  font-size: 1.75rem;
+  color: #059669;
+  margin: 0 0 8px 0;
+}
+
+.success-lead {
+  font-size: 0.95rem;
+  color: #475569;
+  margin: 0 0 20px 0;
+}
+
+.invoice-sent-card {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  margin-bottom: 20px;
+}
+
+.mail-icon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.mail-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #166534;
+  margin-bottom: 2px;
+}
+
+.mail-target {
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: #0f172a;
+  word-break: break-all;
+}
+
+.mail-hint {
+  font-size: 0.78rem;
+  color: #64748b;
+  display: block;
+  margin-top: 4px;
+}
+
+.success-order-summary {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.88rem;
+}
+
+.s-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #475569;
+}
+
+.s-row strong {
+  color: #0f172a;
+}
+
+.success-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Toast Popup */
+.toast-popup {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.9);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  z-index: 10000;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+  animation: toastFade 0.2s ease-out;
+}
+
+@keyframes toastFade {
+  from { opacity: 0; transform: translate(-50%, 10px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+</style>

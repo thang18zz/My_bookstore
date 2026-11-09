@@ -6,6 +6,9 @@
 spring:
   datasource:
     password: "YOUR_MYSQL_PASSWORD_HERE"
+  mail:
+    username: "YOUR_GMAIL_ADDRESS@gmail.com"
+    password: "YOUR_GMAIL_APP_PASSWORD" # Mật khẩu ứng dụng Gmail (16 ký tự)
 
 groq:
   api-key: "YOUR_GROQ_API_KEY_HERE"

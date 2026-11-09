@@ -4,6 +4,7 @@ import com.bookstore.order.Order;
 import com.bookstore.order.OrderRepository;
 import com.bookstore.order.OrderStatus;
 import com.bookstore.order.PaymentStatus;
+import com.bookstore.payment.EmailService;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -40,6 +41,8 @@ public class MonaPayWebhookService {
     private final OrderRepository orderRepository;
 
     private final ObjectMapper objectMapper;
+
+    private final EmailService emailService;
 
     /**
      * Main webhook handler.
@@ -204,6 +207,13 @@ public class MonaPayWebhookService {
 
         orderRepository.save(order);
         log.info("Payment confirmed successfully for order #{}, transactionCode={}", order.getId(), transactionCode);
+
+        // Gửi hóa đơn chi tiết về gmail của người đặt hàng
+        try {
+            emailService.sendOrderInvoice(order);
+        } catch (Exception e) {
+            log.error("Failed to send invoice email for order #{}: {}", order.getId(), e.getMessage());
+        }
     }
 
     /**
