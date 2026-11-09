@@ -35,37 +35,40 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable())
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                // Public: register/login/logout (UC1.1.1-3), browsing/search (Theme 2), product
-                // reviews read-only (UC7.1.1), contact info (UC9.1/9.2).
-                // NOTE: /api/auth/me and the chatbot are intentionally NOT here - both require a
-                // logged-in user (UC1.2.1/1.2.2 and Epic 14.1 are all "Là Khách hàng đã đăng nhập").
-                .requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/logout",
-                                  "/api/products/**", "/api/categories/**", "/api/contact/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/reviews/product/**").permitAll()
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                .anyRequest().authenticated()
-            )
-            .exceptionHandling(ex -> ex
-                // Without these, an AuthenticationException/AccessDeniedException bubbles up as an
-                // unhandled 500 instead of a clean 401/403 JSON body (was TC_UC1.2.1_02).
-                .authenticationEntryPoint((request, response, authException) -> {
-                    response.setStatus(401);
-                    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                    response.getWriter().write(objectMapper.writeValueAsString(
-                            ApiResponse.fail("Authentication required")));
-                })
-                .accessDeniedHandler((request, response, accessDeniedException) -> {
-                    response.setStatus(403);
-                    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                    response.getWriter().write(objectMapper.writeValueAsString(
-                            ApiResponse.fail("Access denied")));
-                })
-            )
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        // Public: register/login/logout (UC1.1.1-3), browsing/search (Theme 2), product
+                        // reviews read-only (UC7.1.1), contact info (UC9.1/9.2).
+                        // NOTE: /api/auth/me and the chatbot are intentionally NOT here - both require
+                        // a
+                        // logged-in user (UC1.2.1/1.2.2 and Epic 14.1 are all "Là Khách hàng đã đăng
+                        // nhập").
+                        .requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/logout",
+                                "/api/products/**", "/api/categories/**", "/api/contact/**")
+                        .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/reviews/product/**").permitAll()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/payment/monapay/webhook").permitAll()
+                        .anyRequest().authenticated())
+                .exceptionHandling(ex -> ex
+                        // Without these, an AuthenticationException/AccessDeniedException bubbles up as
+                        // an
+                        // unhandled 500 instead of a clean 401/403 JSON body (was TC_UC1.2.1_02).
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(401);
+                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                            response.getWriter().write(objectMapper.writeValueAsString(
+                                    ApiResponse.fail("Authentication required")));
+                        })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            response.setStatus(403);
+                            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+                            response.getWriter().write(objectMapper.writeValueAsString(
+                                    ApiResponse.fail("Access denied")));
+                        }))
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 

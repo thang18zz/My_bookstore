@@ -54,10 +54,21 @@
         <!-- Payment method info -->
         <section class="checkout-section">
           <h3>2. Phương thức thanh toán</h3>
-          <div class="payment-box">
-            <label class="payment-option">
-              <input type="radio" checked disabled />
-              <span>Thanh toán khi nhận hàng (COD - Tiền mặt)</span>
+          <div class="payment-options-list">
+            <label :class="['payment-option-card', { selected: paymentMethod === 'OFFLINE' }]">
+              <input type="radio" value="OFFLINE" v-model="paymentMethod" name="paymentMethod" />
+              <div class="option-content">
+                <div class="option-title">💵 Thanh toán khi nhận hàng (COD)</div>
+                <div class="option-desc">Thanh toán bằng tiền mặt khi nhận hàng tại địa chỉ của bạn.</div>
+              </div>
+            </label>
+
+            <label :class="['payment-option-card', { selected: paymentMethod === 'ONLINE' }]">
+              <input type="radio" value="ONLINE" v-model="paymentMethod" name="paymentMethod" />
+              <div class="option-content">
+                <div class="option-title">💳 Thanh toán online (Mona Pay / QR Chuyển khoản)</div>
+                <div class="option-desc">Thanh toán trực tuyến bảo mật qua cổng thanh toán Mona Pay (VietQR / Ngân hàng).</div>
+              </div>
             </label>
           </div>
         </section>
@@ -116,7 +127,7 @@
               :disabled="!addressId || cart.items.length === 0 || placingOrder"
               @click="confirm"
             >
-              {{ placingOrder ? 'Đang xử lý đặt hàng...' : 'Xác nhận Đặt hàng' }}
+              {{ placingOrder ? 'Đang xử lý...' : 'Tiến hành thanh toán' }}
             </button>
             <p v-if="!addressId" class="hint-msg">Vui lòng chọn hoặc thêm địa chỉ nhận hàng để tiếp tục</p>
           </div>
@@ -190,6 +201,7 @@ import { useCartStore } from '../stores/cart'
 
 const addresses = ref([])
 const addressId = ref(null)
+const paymentMethod = ref('OFFLINE')
 const preview = ref(null)
 const error = ref('')
 const placingOrder = ref(false)
@@ -260,9 +272,12 @@ async function confirm() {
   placingOrder.value = true
   error.value = ''
   try {
-    const res = await orderApi.checkout(addressId.value)
+    const res = await orderApi.checkout({
+      addressId: addressId.value,
+      paymentMethod: paymentMethod.value
+    })
     await cart.fetch()
-    router.push(`/orders/${res.data.id}`)
+    router.push(`/order-created/${res.data.id}`)
   } catch (e) {
     error.value = e.response?.data?.message || e.message || 'Đặt hàng thất bại'
   } finally {
@@ -349,18 +364,55 @@ async function confirm() {
 .manage-link a { color: var(--tb-teal-700); text-decoration: none; font-weight: 600; }
 .manage-link a:hover { text-decoration: underline; }
 
-.payment-box {
-  padding: 12px;
-  background: #f9fafb;
-  border-radius: 6px;
-  border: 1px solid #e5e7eb;
-}
-.payment-option {
+.payment-options-list {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.payment-option-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.payment-option-card:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+
+.payment-option-card.selected {
+  background: #f0fdfa;
+  border-color: var(--tb-teal-600, #0d9488);
+  box-shadow: 0 0 0 1px var(--tb-teal-600, #0d9488);
+}
+
+.payment-option-card input[type="radio"] {
+  margin-top: 3px;
+  accent-color: var(--tb-teal-600, #0d9488);
+  cursor: pointer;
+}
+
+.option-content {
+  flex: 1;
+}
+
+.option-title {
+  font-weight: 600;
   font-size: 0.95rem;
   color: #1f2937;
+  margin-bottom: 2px;
+}
+
+.option-desc {
+  font-size: 0.84rem;
+  color: #6b7280;
 }
 
 /* Sidebar Order Summary */

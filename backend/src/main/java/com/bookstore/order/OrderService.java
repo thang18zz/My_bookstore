@@ -13,22 +13,15 @@ import com.bookstore.common.ResourceNotFoundException;
 import com.bookstore.order.dto.*;
 import com.bookstore.product.Product;
 import com.bookstore.product.ProductRepository;
-import com.fasterxml.jackson.databind.JsonNode.OverwriteMode;
 
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
 
-/**
- * This is where Theme 3 (cart), Theme 6 (address) and Theme 4/5 (order) meet:
- * checkout reads the
- * live Cart and a saved Address, then produces an immutable Order + snapshot
- * OrderItems and adjusts
- * Product stock - implementing UC4.1.1-4 and UC4.2.1-4 in one transaction.
- */
 @Service
 @RequiredArgsConstructor
 public class OrderService {
@@ -39,107 +32,213 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
 
-    // UC4.1.3 - Kiểm tra thông tin đơn hàng trước khi xác nhận
+    // UC4.1.3 - Preview order
     public OrderPreviewDto preview(Long userId, Long addressId) {
+
         CartDto cart = cartService.view(userId);
-        if (cart.getItems().isEmpty())
+
+        if (cart.getItems().isEmpty()) {
             throw new BadRequestException("Cart is empty");
-        Address address = addressService.requireOwned(userId, addressId); // UC4.1.2
-        String summary = address.getRecipientName() + " - " + address.getPhone() + " - " + address.getLine1()
-                + ", " + address.getDistrict() + ", " + address.getCity();
+        }
+
+        Address address = addressService.requireOwned(userId, addressId);
+
+        String summary = address.getRecipientName()
+                + " - " + address.getPhone()
+                + " - " + address.getLine1()
+                + ", " + address.getDistrict()
+                + ", " + address.getCity();
+
         return new OrderPreviewDto(cart, addressId, summary);
     }
 
-    // UC4.1.1 / UC4.1.4 / UC4.2.1-4 - Tiến hành thanh toán -> xác nhận đặt hàng ->
-    // tạo đơn hàng
+    // UC4.1.1 / UC4.1.4 / UC4.2.1-4
+    // Create order with ONLINE or OFFLINE payment.
     @Transactional
     public OrderDto checkout(Long userId, CheckoutRequest req) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new ResourceNotFoundException("User not found"));
-        Address address = addressService.requireOwned(userId, req.getAddressId());
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        Address address = addressService.requireOwned(
+                userId,
+                req.getAddressId());
+
         Cart cart = cartService.getOrCreateCart(userId);
-        if (cart.getItems().isEmpty())
+
+        if (cart.getItems().isEmpty()) {
             throw new BadRequestException("Cart is empty");
+        }
+
+        PaymentMethod paymentMethod = req.getPaymentMethod();
+
+        if (paymentMethod == null) {
+            paymentMethod = PaymentMethod.OFFLINE;
+        }
 
         Order order = new Order();
+
         order.setUser(user);
         order.setShippingAddress(address);
-        order.setOrderStatus(OrderStatus.PENDING);
-        order.setPaymentMethod(PaymentMethod.OFFLINE);
+
+        order.setPaymentMethod(paymentMethod);
         order.setPaymentStatus(PaymentStatus.UNPAID);
 
+        /*
+         * ONLINE:
+         * Wait for MONA Pay payment confirmation.
+         *
+         * OFFLINE:
+         * Confirm order immediately (Cash on Delivery).
+         */
+        if (paymentMethod == PaymentMethod.ONLINE) {
+
+            order.setOrderStatus(OrderStatus.PENDING);
+
+        } else {
+
+            order.setOrderStatus(OrderStatus.CONFIRMED);
+
+        }
+
         BigDecimal total = BigDecimal.ZERO;
+
         for (CartItem ci : cart.getItems()) {
+
             Product product = ci.getProduct();
-            // Re-validate stock at the moment of purchase (UC3.2.1/UC3.2.2 checked again
-            // here)
+
+            // Validate stock
             if (ci.getQuantity() > product.getStockQuantity()) {
-                throw new BadRequestException("Not enough stock for " + product.getName());
+
+                throw new BadRequestException(
+                        "Not enough stock for " + product.getName());
             }
-            OrderItem item = new OrderItem(); // UC4.2.3 - Ghi nhận sản phẩm trong đơn hàng
+
+            // Create OrderItem
+            OrderItem item = new OrderItem();
+
             item.setOrder(order);
             item.setProduct(product);
             item.setQuantity(ci.getQuantity());
             item.setPriceAtPurchase(product.getPrice());
+
             order.getItems().add(item);
 
-            total = total.add(product.getPrice().multiply(BigDecimal.valueOf(ci.getQuantity())));
+            // Calculate total
+            total = total.add(
+                    product.getPrice().multiply(
+                            BigDecimal.valueOf(ci.getQuantity())));
 
-            product.setStockQuantity(product.getStockQuantity() - ci.getQuantity()); // UC4.2.4
+            // Deduct stock immediately
+            product.setStockQuantity(
+                    product.getStockQuantity() - ci.getQuantity());
+
             productRepository.save(product);
         }
-        order.setTotalAmount(total); // UC4.2.2
-        order.setOrderStatus(OrderStatus.CONFIRMED);
+
+        order.setTotalAmount(total);
+
         orderRepository.save(order);
 
-        cartService.clear(userId); // cart consumed once the order exists
+        // Clear cart after successful order creation
+        cartService.clear(userId);
 
         return toDto(order);
     }
 
-    // UC5.1.1 - Xem lịch sử đơn hàng
+    // UC5.1.1 - Order history
     public List<OrderDto> myOrders(Long userId) {
-        return orderRepository.findByUserIdOrderByCreatedAtDesc(userId).stream().map(this::toDto).toList();
+
+        return orderRepository
+                .findByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
+                .map(this::toDto)
+                .toList();
     }
 
-    // UC5.1.2 - Xem chi tiết đơn hàng (customer, ownership enforced) / UC5.1.3
-    // tracking is the same view
+    // UC5.1.2 / UC5.1.3 - Order detail
     public OrderDto myOrderDetail(Long userId, Long orderId) {
-        Order o = orderRepository.findByIdAndUserId(orderId, userId)
+
+        Order order = orderRepository
+                .findByIdAndUserId(orderId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
-        return toDto(o);
+
+        return toDto(order);
     }
 
-    // UC5.1.4 - Hủy đơn hàng (chỉ khi còn ở trạng thái cho phép hủy)
+    // UC5.1.4 - Cancel order
     @Transactional
     public OrderDto cancel(Long userId, Long orderId) {
-        Order o = orderRepository.findByIdAndUserId(orderId, userId)
+
+        Order order = orderRepository
+                .findByIdAndUserId(orderId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
-        if (o.getOrderStatus() != OrderStatus.PENDING && o.getOrderStatus() != OrderStatus.CONFIRMED) {
-            throw new BadRequestException("Order can no longer be cancelled");
+
+        // Cannot cancel an already paid order
+        if (order.getPaymentStatus() == PaymentStatus.PAID) {
+
+            throw new BadRequestException(
+                    "Paid orders cannot be cancelled directly");
         }
-        o.setOrderStatus(OrderStatus.CANCELLED);
-        // restock
-        for (OrderItem item : o.getItems()) {
-            Product p = item.getProduct();
-            p.setStockQuantity(p.getStockQuantity() + item.getQuantity());
-            productRepository.save(p);
+
+        if (order.getOrderStatus() != OrderStatus.PENDING
+                && order.getOrderStatus() != OrderStatus.CONFIRMED) {
+
+            throw new BadRequestException(
+                    "Order can no longer be cancelled");
         }
-        return toDto(orderRepository.save(o));
+
+        order.setOrderStatus(OrderStatus.CANCELLED);
+
+        // Restore stock when the customer explicitly cancels the order.
+        for (OrderItem item : order.getItems()) {
+
+            Product product = item.getProduct();
+
+            product.setStockQuantity(
+                    product.getStockQuantity() + item.getQuantity());
+
+            productRepository.save(product);
+        }
+
+        return toDto(orderRepository.save(order));
     }
 
-    OrderDto toDto(Order o) {
-        List<OrderItemDto> items = o.getItems().stream()
-                .map(i -> new OrderItemDto(i.getProduct().getId(), i.getProduct().getName(),
-                        i.getQuantity(), i.getPriceAtPurchase()))
+    // Convert Order entity to DTO
+    OrderDto toDto(Order order) {
+
+        List<OrderItemDto> items = order.getItems()
+                .stream()
+                .map(item -> new OrderItemDto(
+                        item.getProduct().getId(),
+                        item.getProduct().getName(),
+                        item.getQuantity(),
+                        item.getPriceAtPurchase()))
                 .toList();
-        String addr = o.getShippingAddress().getRecipientName() + " - " + o.getShippingAddress().getLine1()
-                + ", " + o.getShippingAddress().getDistrict() + ", " + o.getShippingAddress().getCity();
-        return new OrderDto(o.getId(), o.getOrderStatus().name(), o.getPaymentMethod().name(), o.getPaymentReference(),
-                o.getTransactionId(), o.getPaymentStatus().name(), o.getPaidAt(), o.getTotalAmount(), o.getCreatedAt(),
-                o.getShippingAddress().getRecipientName(), addr, items);
+
+        String address = order.getShippingAddress().getRecipientName()
+                + " - " + order.getShippingAddress().getLine1()
+                + ", " + order.getShippingAddress().getDistrict()
+                + ", " + order.getShippingAddress().getCity();
+
+        return new OrderDto(
+                order.getId(),
+                order.getOrderStatus().name(),
+                order.getPaymentMethod().name(),
+                order.getPaymentReference(),
+                order.getTransactionId(),
+                order.getPaymentStatus().name(),
+                order.getPaidAt(),
+                order.getTotalAmount(),
+                order.getCreatedAt(),
+                order.getShippingAddress().getRecipientName(),
+                address,
+                items);
     }
 
     Order requireEntity(Long id) {
-        return orderRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+
+        return orderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
     }
 }

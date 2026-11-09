@@ -26,4 +26,11 @@ public class OrderDto {
     private String shippingAddress;
     private List<OrderItemDto> items;
 
+    public String getOrderStatus() {
+        return oderStatus;
+    }
+
+    public String getStatus() {
+        return oderStatus;
+    }
 }

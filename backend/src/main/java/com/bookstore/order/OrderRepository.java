@@ -16,4 +16,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Page<Order> findByOrderStatus(OrderStatus orderStatus, Pageable pageable); // UC5.2.5 tra cứu theo trạng thái
 
     long countByOrderStatus(OrderStatus status); // UC12.1.4 / UC12.2.x
+
+    Optional<Order> findByPaymentReference(String paymentReference);
 }
