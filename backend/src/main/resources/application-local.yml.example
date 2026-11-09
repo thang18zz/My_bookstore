@@ -9,3 +9,13 @@ spring:
 
 groq:
   api-key: "YOUR_GROQ_API_KEY_HERE"
+
+monapay:
+  base-url: https://api.monapay.vn
+  client-id: "YOUR_CLIENT_ID"       # Điền trực tiếp trong dấu ngoặc kép, KHÔNG dùng ${...}
+  client-secret: "YOUR_CLIENT_SECRET" # Điền trực tiếp trong dấu ngoặc kép, KHÔNG dùng ${...}
+  webhook-secret: "YOUR_WEBHOOK_SECRET" # Điền trực tiếp trong dấu ngoặc kép, KHÔNG dùng ${...}
+  sandbox: true
+  expires-in: 900
+  return-url: http://localhost:5173/orders
+  cancel-url: http://localhost:5173/cart
