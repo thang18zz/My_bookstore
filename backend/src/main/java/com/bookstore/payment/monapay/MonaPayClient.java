@@ -68,6 +68,33 @@ public class MonaPayClient {
         }
     }
 
+    /**
+     * Simulate Sandbox Transaction to trigger Mona Pay payment matcher.
+     */
+    public void createSandboxTransaction(Long amount, String orderCode, String virtualAccountNumber) {
+        try {
+            Map<String, Object> body = new HashMap<>();
+            body.put("amount", amount);
+            body.put("description", orderCode);
+            if (virtualAccountNumber != null && !virtualAccountNumber.isBlank()) {
+                body.put("virtual_account_number", virtualAccountNumber);
+            }
+            client()
+                    .post()
+                    .uri("/api/v1/sandbox/transactions")
+                    .header("Authorization", "Bearer " + authService.getAccessToken())
+                    .header("X-Client-Secret", config.getClientSecret())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(body)
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .block();
+            log.info("MONA Pay sandbox transaction submitted for {}", orderCode);
+        } catch (Exception e) {
+            log.warn("Mona Pay sandbox transaction simulation: {}", e.getMessage());
+        }
+    }
+
     private String sanitizeUrl(String url, String fallback) {
         if (url == null || url.isBlank() || url.contains("localhost") || url.contains("127.0.0.1")) {
             return fallback;

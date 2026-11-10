@@ -51,6 +51,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/reviews/product/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/payment/monapay/webhook").permitAll()
+                        .requestMatchers("/api/payments/*/pay-now").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(ex -> ex
                         // Without these, an AuthenticationException/AccessDeniedException bubbles up as

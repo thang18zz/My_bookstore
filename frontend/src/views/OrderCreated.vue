@@ -227,19 +227,36 @@
           <div class="qr-display-box">
             <div class="qr-image-wrapper">
               <img 
-                :src="qrData.qrImageUrl || ('https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=' + encodeURIComponent(qrData.checkoutUrl))" 
+                :src="'https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=' + encodeURIComponent(payUrl)" 
                 alt="Mã QR thanh toán Mona Pay" 
                 class="qr-code-img"
               />
             </div>
 
             <div class="qr-instruction">
-              📱 Đưa ống kính camera trên điện thoại vào mã QR để thanh toán qua cổng <strong>Mona Pay</strong>.
+              📱 Dùng <strong>Camera điện thoại</strong> quét mã QR trên để mở liên kết thanh toán tự động và nhận Gmail ngay lập tức!
             </div>
 
             <div class="amount-badge">
               <span class="amount-label">Số tiền cần thanh toán:</span>
               <span class="amount-val">{{ order.totalAmount.toLocaleString() }} đ</span>
+            </div>
+          </div>
+
+          <!-- Instant 1-Click Pay & Direct Link -->
+          <div class="instant-pay-box">
+            <button 
+              type="button" 
+              class="btn btn-primary btn-block btn-instant-pay"
+              :disabled="autoPaying"
+              @click="handleInstantPay"
+            >
+              {{ autoPaying ? '⏳ Đang xử lý thanh toán & gửi Gmail...' : '⚡ Bấm vào đây để tự động thanh toán & Gửi Gmail luôn' }}
+            </button>
+            <div class="direct-link-row">
+              <a :href="payUrl" target="_blank" class="direct-pay-link">
+                🔗 Hoặc bấm mở đường link thanh toán tự động (tab mới)
+              </a>
             </div>
           </div>
 
@@ -361,8 +378,17 @@ const showQrModal = ref(false)
 const qrData = ref(null)
 const polling = ref(false)
 const paymentSuccess = ref(false)
+const autoPaying = ref(false)
 const toastMessage = ref('')
 let pollTimer = null
+
+const payUrl = computed(() => {
+  if (qrData.value?.payUrl) return qrData.value.payUrl
+  const origin = window.location.origin.includes('localhost')
+    ? 'https://deafeningly-conjugated-marisha.ngrok-free.dev'
+    : window.location.origin
+  return `${origin}/api/payments/${order.value?.id}/pay-now`
+})
 
 onMounted(loadOrder)
 
@@ -442,6 +468,24 @@ function startPollingPayment() {
       console.warn('Lỗi kiểm tra trạng thái thanh toán:', e)
     }
   }, 2500)
+}
+
+async function handleInstantPay() {
+  if (!order.value || autoPaying.value) return
+  autoPaying.value = true
+  try {
+    const res = await paymentApi.payNow(order.value.id)
+    paymentSuccess.value = true
+    order.value.paymentStatus = 'PAID'
+    order.value.orderStatus = 'CONFIRMED'
+    if (res.data?.transactionId) order.value.transactionId = res.data.transactionId
+    if (res.data?.paidAt) order.value.paidAt = res.data.paidAt
+    stopPolling()
+  } catch (err) {
+    alert('Thanh toán thất bại: ' + (err.response?.data?.message || err.message))
+  } finally {
+    autoPaying.value = false
+  }
 }
 
 function stopPolling() {
@@ -1132,6 +1176,52 @@ function getPaymentStatusText(pStatus) {
   color: #166534;
   margin-bottom: 16px;
   line-height: 1.4;
+}
+
+/* 1-Click Instant Payment Box */
+.instant-pay-box {
+  background: #f0fdfa;
+  border: 1px solid #99f6e4;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: center;
+}
+
+.btn-instant-pay {
+  background: linear-gradient(135deg, #0d9488, #0f766e);
+  color: white;
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 6px -1px rgba(13, 148, 136, 0.25);
+  transition: all 0.2s;
+}
+
+.btn-instant-pay:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0f766e, #115e59);
+  transform: translateY(-1px);
+}
+
+.direct-link-row {
+  margin-top: 2px;
+}
+
+.direct-pay-link {
+  font-size: 0.86rem;
+  color: var(--tb-teal-700, #0f766e);
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+.direct-pay-link:hover {
+  color: #115e59;
 }
 
 .radar-dot {

@@ -8,6 +8,7 @@ public record CreatePaymentResponse(
         BigDecimal amount,
         String checkoutId,
         String checkoutUrl,
+        String payUrl,
         String paymentStatus,
         LocalDateTime expiresAt,
         String qrImageUrl,
