@@ -1,36 +1,40 @@
 # Book Store System — Full-stack reference implementation
 
-Stack: **Vue 3 (Vite + Pinia) + Java 17 / Spring Boot 3 + MySQL + Groq API (chatbot)**.
+Stack: **Vue 3 (Vite + Pinia) + Java 17 / Spring Boot 3 + MySQL + Mona Pay Sandbox (Online Payment) + Spring Mail (Gmail E-Invoice) + Groq API (Chatbot AI)**.
 
-This project is a working skeleton that implements the full Theme → Epic → Use Case breakdown
-(14 Theme / 23 Epic / ~91 Use Case) from the two source documents. Every controller/service method
-carries a `// UCx.y.z` comment so you can trace any use case straight to its code.
+Dự án là một hệ thống thương mại điện tử nhà sách trực tuyến hoàn chỉnh từ Frontend tới Backend, bao gồm quản lý danh mục, sách, giỏ hàng, sổ địa chỉ nhận hàng, đặt hàng, thanh toán trực tuyến (Mona Pay sandbox) kết hợp gửi email hóa đơn tự động (Gmail SMTP), tích hợp trợ lý ảo AI tư vấn sách (Groq AI Chatbot), và trang quản trị Admin toàn diện.
 
-## How the modules are wired together (this is the part the brief asked for)
+---
+
+## 🏗 Kiến trúc kết nối các module (Architecture & Data Flow)
 
 ```
-auth (User) ─┬─> wishlist (User + Product)
-             ├─> cart (User) ──> order (checkout reads Cart + Address, writes Order, updates Product.stock)
-             ├─> address (User) ─┘
-             ├─> review (User + Product)
-             ├─> chatbot (ChatSession.user optional) ──reads──> product, order  (via DataSimplifier)
-             └─> customer admin (same User entity, Role.CUSTOMER only)
+auth (User) ────────┬─> wishlist (User + Product)
+                    ├─> cart (User) ──> order (checkout reads Cart + Address, writes Order, updates Product.stock)
+                    ├─> address (User, bắt buộc có Email nhận hóa đơn) ─┘
+                    ├─> review (User + Product)
+                    ├─> chatbot (ChatSession.user optional) ──reads──> product, order (via DataSimplifier)
+                    └─> customer admin (same User entity, Role.CUSTOMER only)
 
 product (Product, Category) ─> wishlist / cart / order-item / review / inventory / stats / chatbot
 order (Order, OrderItem)    ─> stats (revenue, best-sellers) / chatbot (order lookup)
+payment (Mona Pay Sandbox)  ─> webhook (HMAC-SHA256) / auto-pay QR / 1-click pay ──> order (PAID, CONFIRMED)
+                            └─> emailService ──> gửi hóa đơn điện tử chi tiết qua Gmail
 ```
 
-Nothing is duplicated: e.g. `AdminProductController` calls the *same* `ProductService.getDetail()`
-customers use; `StatsService` reads `OrderRepository`/`ProductRepository` directly instead of a
-separate reporting table, so admin dashboards can never drift from the live data.
+- **Tính nhất quán dữ liệu:** `AdminProductController` gọi chung `ProductService.getDetail()` với phía khách hàng; `StatsService` tính toán trực tiếp từ `OrderRepository`/`ProductRepository` thay vì bảng tổng hợp riêng, đảm bảo số liệu dashboard luôn đồng bộ với dữ liệu thời gian thực.
+- **Hóa đơn & Thanh toán:** Mỗi địa chỉ nhận hàng (`Address`) bắt buộc có email người nhận. Khi đơn hàng được thanh toán thành công (qua Webhook Mona Pay, quét mã QR camera, hoặc nút thanh toán nhanh), hệ thống sẽ gửi ngay email hóa đơn HTML chi tiết tới Gmail của khách hàng.
+
+---
 
 ## 🚀 Hướng Dẫn Chạy Thủ Công Website (Từ A Đến Z)
 
 ### 1. Yêu cầu môi trường (Prerequisites)
 - **Java**: JDK 17 trở lên (`java -version`)
-- **Maven**: 3.8 trở lên (`mvn -version` hoặc dùng script `mvnw.cmd` có sẵn)
-- **Node.js**: Phiên bản 18+ hoặc mới nhất (`node -v` và `npm -v`)
+- **Maven**: 3.8 trở lên (`mvn -version` hoặc script `mvnw.cmd` có sẵn trong thư mục `backend`)
+- **Node.js**: Phiên bản 18+ (`node -v` và `npm -v`)
 - **MySQL Server**: Phiên bản 8.0 (`mysql --version`)
+- **Ngrok** *(tùy chọn, cần khi nhận Webhook Mona Pay và quét QR trên điện thoại)*: (`ngrok version`)
 
 ---
 
@@ -44,19 +48,36 @@ separate reporting table, so admin dashboards can never drift from the live data
 
 ---
 
-### 3. Bước 2: Cấu hình mật khẩu & API Key cục bộ (Local)
-Dự án sử dụng cơ chế bảo mật tách biệt, thông tin nhạy cảm được đặt trong file `application-local.yml` và được chặn bởi `.gitignore` (không sợ lộ khi đẩy lên GitHub).
+### 3. Bước 2: Cấu hình bảo mật cục bộ (`application-local.yml`)
+Dự án sử dụng cơ chế bảo mật tách biệt, thông tin nhạy cảm (mật khẩu database, token thanh toán, mail, API key) được lưu trong file `application-local.yml` và được chặn bởi `.gitignore` (không bị lộ khi đẩy lên GitHub).
 
 1. Vào thư mục `backend/src/main/resources/`
-2. Tạo file `application-local.yml` (hoặc sao chép từ file mẫu `application-local.yml.example`):
+2. Tạo file `application-local.yml` (sao chép từ file mẫu `application-local.yml.example`):
    ```yaml
    spring:
      datasource:
-       password: "MatKhauMySQLCuaBan"   # Ví dụ: Example123.
+       password: "MatKhauMySQLCuaBan"   # Mật khẩu tài khoản root MySQL của bạn
+
+     mail:
+       username: "your-email@gmail.com"        # Địa chỉ Gmail gửi hóa đơn
+       password: "xxxx xxxx xxxx xxxx"        # Mật khẩu ứng dụng Gmail (App Password 16 ký tự)
 
    groq:
-     api-key: "gsk_your_groq_api_key"     # API key từ console.groq.com
+     api-key: "gsk_your_groq_api_key_here"    # API key chatbot từ console.groq.com
+
+   monapay:
+     base-url: https://api.monapay.vn
+     client-id: "YOUR_CLIENT_ID"              # Client ID từ sandbox Mona Pay
+     client-secret: "YOUR_CLIENT_SECRET"      # Client Secret từ sandbox Mona Pay
+     webhook-secret: "YOUR_WEBHOOK_SECRET"    # Webhook Secret để xác thực chữ ký HMAC
+     sandbox: true
+     expires-in: 900
+     return-url: https://deafeningly-conjugated-marisha.ngrok-free.dev/orders
+     cancel-url: https://deafeningly-conjugated-marisha.ngrok-free.dev/cart
    ```
+
+> [!TIP]
+> **Cách lấy Mật khẩu ứng dụng Gmail (16 ký tự):** Vào tài khoản Google -> *Bảo mật* -> *Xác minh 2 bước* -> kéo xuống dưới chọn *Mật khẩu ứng dụng (App Passwords)* -> Tạo mật khẩu mới và dán chuỗi 16 chữ cái vào cấu hình trên.
 
 ---
 
@@ -69,10 +90,10 @@ cd backend
 # Chạy ứng dụng bằng Maven
 mvn spring-boot:run
 ```
-*(Nếu máy chưa cài sẵn biến môi trường Maven, bạn có thể chạy `.\mvnw.cmd spring-boot:run`)*.
+*(Nếu máy chưa cài sẵn Maven toàn cục, bạn có thể chạy `.\mvnw.cmd spring-boot:run`)*.
 
 - Khi chạy thành công, Backend sẽ lắng nghe tại: **`http://localhost:8080`**.
-- **Cơ chế tự động tạo DB:** Spring Boot sẽ tự động tạo cơ sở dữ liệu `bookstore` và toàn bộ 15 bảng JPA tương ứng mà bạn không cần phải tạo thủ công.
+- **Tự động khởi tạo DB:** Spring Boot tự động tạo cơ sở dữ liệu `bookstore` và toàn bộ các bảng JPA liên kết mà bạn không cần phải tạo thủ công.
 
 ---
 
@@ -80,19 +101,17 @@ mvn spring-boot:run
 Nếu database của bạn đang trống và muốn nạp sẵn danh mục sách cùng các sản phẩm mẫu:
 
 > [!WARNING]
-> **Không dùng PowerShell pipe (`|`) để import file SQL có tiếng Việt.** PowerShell không truyền UTF-8 đúng cách sang tiến trình ngoài, khiến toàn bộ ký tự tiếng Việt bị lưu thành dấu hỏi `???` trong database.
+> **Không dùng PowerShell pipe (`|`) để import file SQL có tiếng Việt.** PowerShell không truyền UTF-8 đúng cách sang tiến trình ngoài, khiến toàn bộ ký tự tiếng Việt bị lưu thành dấu hỏi `???` trong database. Hãy dùng lệnh `cmd /c` với `chcp 65001`:
 
 ```powershell
 cmd /c "chcp 65001 >nul & `"C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe`" --default-character-set=utf8mb4 -u root -p bookstore < backend\src\main\resources\seed.sql"
 ```
+*(Nhập mật khẩu MySQL khi được nhắc)*.
 
-*(Thay `MATKHAU_CUA_BAN` bằng mật khẩu MySQL thực tế của bạn, ví dụ: `Example123.`).*
-
-Sau khi import, kiểm tra lại bằng lệnh:
+Kiểm tra lại dữ liệu tiếng Việt:
 ```powershell
-& "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -u root -pMATKHAU_CUA_BAN -e "SELECT name FROM bookstore.products LIMIT 3;"
+& "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -u root -p -e "SELECT name FROM bookstore.products LIMIT 3;"
 ```
-Kết quả đúng phải hiển thị tên tiếng Việt rõ ràng, không có ký tự `?`.
 
 ---
 
@@ -114,7 +133,42 @@ npm run dev
 
 ---
 
-### 7. Tài khoản đăng nhập hệ thống
+### 7. Bước 6 (Tùy chọn): Mở đường hầm Ngrok để quét QR & nhận Webhook
+Để điện thoại có thể quét mã QR thanh toán hoặc nhận Webhook từ máy chủ Mona Pay về máy local:
+```powershell
+ngrok http 8080 --domain deafeningly-conjugated-marisha.ngrok-free.dev
+```
+
+> [!NOTE]
+> Nếu ngrok báo lỗi `ERR_NGROK_334` (domain đã online do có tiến trình cũ đang chạy ngầm), hãy tắt tiến trình cũ bằng lệnh PowerShell:
+> ```powershell
+> Stop-Process -Name ngrok -Force
+> ```
+> rồi khởi chạy lại.
+
+- **URL cấu hình Webhook trên trang quản trị Mona Pay:**
+  `https://deafeningly-conjugated-marisha.ngrok-free.dev/api/payment/monapay/webhook`
+
+---
+
+## 💳 Trải Nghiệm Luồng Thanh Toán Online & Gửi Gmail Tự Động
+
+1. **Thêm địa chỉ giao hàng:**
+   - Vào mục **Sổ địa chỉ** (`/addresses`) hoặc trong màn hình **Thanh toán** (`/checkout`).
+   - Nhập thông tin người nhận, số điện thoại, địa chỉ và **bắt buộc nhập Email người nhận** để hệ thống gửi hóa đơn điện tử.
+2. **Đặt hàng:**
+   - Trong trang Checkout, chọn hình thức: **Thanh toán online (Mona Pay)**.
+   - Bấm **"Tiến hành thanh toán"** $\rightarrow$ Hệ thống tự động chuyển đến trang chi tiết hóa đơn `OrderCreated.vue`.
+3. **Thực hiện thanh toán:**
+   - Bấm nút **"Thanh toán ngay"** trên màn hình để mở hộp thoại mã QR.
+   - Bạn có thể thực hiện thanh toán theo một trong các cách sau:
+     - 📱 **Quét mã QR bằng Camera điện thoại:** Hướng camera điện thoại vào mã QR $\rightarrow$ Camera sẽ hiện liên kết web thanh toán tự động $\rightarrow$ Bấm mở liên kết $\rightarrow$ Màn hình điện thoại hiện thông báo xác nhận thành công, màn hình máy tính tự động cập nhật và Gmail của người nhận nhận ngay hóa đơn chi tiết.
+     - ⚡ **Bấm nút 1-Click trên Web:** Nhấn nút **"⚡ Bấm vào đây để tự động thanh toán & Gửi Gmail luôn"** ngay bên dưới mã QR để hoàn tất thanh toán và kích hoạt gửi email ngay lập tức.
+     - 🔗 **Gửi Webhook từ Mona Pay:** Thử nghiệm bắn webhook từ trang quản trị Mona Pay về endpoint `/api/payment/monapay/webhook`.
+
+---
+
+## 👥 Tài khoản đăng nhập hệ thống
 
 | Loại tài khoản | Email | Mật khẩu | Ghi chú / Quyền hạn |
 | :--- | :--- | :--- | :--- |
@@ -123,60 +177,57 @@ npm run dev
 
 ---
 
+## 🧩 Backend Architecture (`backend/`)
 
-## Backend Architecture (`backend/`)
-
-
-### The chatbot pipeline (Epic 14.1/14.2), the part explicitly requested
-
+### 1. The chatbot pipeline (Epic 14.1/14.2)
 ```
 ChatbotController → ChatbotService
-                       ├─ IntentDetector.detect(message)        // keyword classifier, no external call
-                       ├─ fetch relevant entities (Product / Order / FaqEntry) from their own repos
-                       ├─ DataSimplifier.simplify*(...)          // <-- "hàm viết sẵn để đơn giản hóa
-                       │                                              dữ liệu đầu vào" the brief asked for
+                       ├─ IntentDetector.detect(message)        // Phân loại ý định người dùng (keyword classifier)
+                       ├─ fetch relevant entities (Product / Order / FaqEntry)
+                       ├─ DataSimplifier.simplify*(...)          // Rút gọn, làm sạch PII trước khi gửi cho AI
                        ├─ GroqPromptBuilder.build(context, history)
                        └─ GroqClient.chat(messages) → api.groq.com/openai/v1/chat/completions
 ```
 
-`DataSimplifier` is the single choke point all DB data passes through before it can reach Groq:
-it strips PII (passwords, emails, phone numbers, other users' data), flattens JPA entity graphs
-into short plain-text lines, and truncates everything to keep prompts small and stable. Every new
-data source you want to expose to the chatbot should get its own `simplifyXxx()` method there,
-never send an entity to `GroqClient` directly.
+`DataSimplifier` đóng vai trò là chốt chặn an toàn: loại bỏ toàn bộ dữ liệu nhạy cảm (mật khẩu, email, số điện thoại người khác), chuẩn hóa thông tin thực thể JPA thành văn bản ngắn gọn, đảm bảo prompt gửi tới Groq luôn bảo mật và chính xác.
 
-`IntentDetector` decides *which* data to fetch (product info vs order lookup vs recommendation vs
-handoff) — it is plain keyword matching by design, so it runs before any network call. Swap it for
-a real classifier later without touching `ChatbotService`.
-
-## Frontend (`frontend/`)
-
-Vue 3 + Vite + Pinia + vue-router + axios.
-
-- `src/api/*Api.js` — one thin module per backend controller (naming matches 1:1).
-- `src/stores/*.js` — Pinia stores for state that must survive navigation: `auth`, `cart`,
-  `wishlist`, `chatbot`. Everything else (orders, addresses, admin CRUD) is fetched directly in the
-  view component since it's not shared across pages.
-- `src/router/index.js` — one route per view, with `meta.auth` / `meta.admin` guards read from
-  `stores/auth.js` (the same auth store `http.js` uses to attach the JWT to every request).
-- `src/components/ChatbotWidget.vue` — floating widget mounted once in `App.vue`, visible on every
-  page; talks to the backend chatbot module described above.
-
-Run it:
-```bash
-cd frontend
-npm install
-npm run dev   # http://localhost:5173, proxies /api to the backend on :8080
+### 2. Payment & Email Notification Architecture
+```
+PaymentController
+   ├─ POST /api/payments/{orderId}/create   --> Gọi MonaPayClient tạo giao dịch & lấy link thanh toán
+   ├─ GET  /api/payments/{orderId}/status   --> Kiểm tra trạng thái thanh toán đơn hàng (polling)
+   ├─ GET  /api/payments/{orderId}/pay-now  --> Xử lý quét QR bằng camera điện thoại, hiển thị HTML xác nhận
+   ├─ POST /api/payments/{orderId}/pay-now  --> Nút 1-Click thanh toán trực tiếp từ giao diện web
+   └─ POST /api/payment/monapay/webhook     --> Nhận webhook từ Mona Pay, xác thực chữ ký HMAC-SHA256
+                                                 │
+                                                 ▼
+                                        PaymentService.processAutoPay()
+                                                 │
+                                                 ├─ Cập nhật Order: PAID & CONFIRMED
+                                                 └─ EmailService.sendOrderInvoice()
+                                                       └─ Gửi email HTML hóa đơn chi tiết qua Gmail SMTP
 ```
 
-## What's intentionally simplified
+---
 
-- Payment gateway integration is out of scope; `checkout()` marks the order `CONFIRMED` directly.
-- Image upload isn't wired up; `imageUrl` is a plain string field (paste a URL).
-- `IntentDetector` is keyword-based, not ML-based — swap the implementation, keep the interface.
-- Soft delete (an `active`/`isActive` flag) is used for Product and User instead of hard delete, so
-  historical orders and reviews never end up pointing at a row that no longer exists.
+## 💻 Frontend Architecture (`frontend/`)
 
-Theme 14 (Chatbot) itself is a proposed extension per the source documents, not part of the
-original reference repository being modeled — this codebase treats it as a first-class module
-alongside the other 13 Themes.
+Xây dựng trên nền tảng **Vue 3 (Composition API) + Vite + Pinia + Vue Router + Axios**.
+
+- `src/api/*Api.js`: Các module kết nối API backend tương ứng (`paymentApi.js`, `orderApi.js`, `addressApi.js`, `productApi.js`, v.v.).
+- `src/stores/*.js`: Quản lý state toàn cục với Pinia: `auth`, `cart`, `wishlist`, `chatbot`.
+- `src/views/Checkout.vue`: Trang thanh toán cho phép chọn COD hoặc Mona Pay online, quản lý sổ địa chỉ với email người nhận bắt buộc.
+- `src/views/OrderCreated.vue`: Trang xác nhận đơn hàng sau khi tạo, hỗ trợ hiển thị mã QR thanh toán động, polling trạng thái theo thời gian thực, nút 1-click thanh toán và thông báo chúc mừng.
+- `src/views/OrderDetail.vue`: Xem chi tiết toàn diện thông tin đơn hàng, danh sách sản phẩm, địa chỉ người nhận (kèm email), và trạng thái thanh toán.
+- `src/components/ChatbotWidget.vue`: Trợ lý AI tư vấn sách nổi ở góc phải màn hình, hỗ trợ tìm sách, kiểm tra đơn hàng và giải đáp thắc mắc.
+
+---
+
+## 📌 Các tính năng mở rộng đã hoàn thiện
+
+- ✅ **Cổng thanh toán trực tuyến Mona Pay Sandbox:** Tích hợp quy trình tạo thanh toán, mã QR thanh toán động, tự động xác nhận đơn hàng khi khách thanh toán.
+- ✅ **Gửi hóa đơn điện tử tự động qua Gmail:** Sử dụng Spring Boot Starter Mail gửi email HTML thiết kế chuyên nghiệp, đầy đủ chi tiết sản phẩm, giá tiền và thông tin giao nhận ngay khi thanh toán thành công.
+- ✅ **Bắt buộc Email cho sổ địa chỉ:** Bổ sung trường `email` vào thực thể `Address`, xác thực `@Email` và `@NotBlank`, đảm bảo mọi đơn hàng đều có hòm thư nhận hóa đơn.
+- ✅ **Quét mã QR bằng Camera điện thoại:** Mã QR mã hóa trực tiếp đường dẫn thanh toán Web, cho phép dùng camera mặc định của điện thoại thông minh để quét và thanh toán tức thì.
+- ✅ **Nút 1-Click thanh toán giả lập:** Giúp kiểm thử nhanh chóng ngay trên giao diện web mà không cần thao tác chuyển khoản thủ công.
+- ✅ **Chatbot AI tư vấn sách (Groq AI):** Trợ lý hỗ trợ tìm kiếm sách, gợi ý theo sở thích, tra cứu tình trạng đơn hàng bằng ngôn ngữ tự nhiên.
